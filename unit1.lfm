@@ -1,0 +1,203 @@
+object Form1: TForm1
+  Left = 346
+  Height = 478
+  Top = 120
+  Width = 813
+  Caption = 'Form1'
+  ClientHeight = 458
+  ClientWidth = 813
+  Menu = MainMenu1
+  OnCreate = FormCreate
+  LCLVersion = '2.0.12.0'
+  object ScrollBox1: TScrollBox
+    Left = 40
+    Height = 337
+    Top = 40
+    Width = 381
+    HorzScrollBar.Page = 136
+    VertScrollBar.Page = 120
+    ClientHeight = 333
+    ClientWidth = 377
+    ParentFont = False
+    TabOrder = 0
+    object Image1: TImage
+      Cursor = crCross
+      Left = 0
+      Height = 120
+      Top = 0
+      Width = 136
+      AutoSize = True
+      Enabled = False
+      OnMouseMove = Image1MouseMove
+    end
+  end
+  object StatusBar1: TStatusBar
+    Left = 0
+    Height = 23
+    Top = 435
+    Width = 813
+    Panels = <    
+      item
+        Text = 'X,Y'
+        Width = 40
+      end    
+      item
+        Width = 40
+      end    
+      item
+        Width = 40
+      end    
+      item
+        Text = 'RGB'
+        Width = 40
+      end    
+      item
+        Width = 40
+      end    
+      item
+        Width = 40
+      end    
+      item
+        Width = 40
+      end    
+      item
+        Text = 'Tamaño'
+        Width = 48
+      end    
+      item
+        Width = 72
+      end    
+      item
+        Width = 40
+      end    
+      item
+        Width = 40
+      end    
+      item
+        Width = 40
+      end>
+    ParentFont = False
+    SimplePanel = False
+  end
+  object Chart1: TChart
+    Left = 456
+    Height = 264
+    Top = 40
+    Width = 324
+    AxisList = <    
+      item
+        Grid.Visible = False
+        Intervals.NiceSteps = '0|5|10'
+        Marks.Visible = False
+        Marks.LabelBrush.Style = bsClear
+        Marks.Range.Max = 100
+        Marks.Range.UseMax = True
+        Marks.Range.UseMin = True
+        Minors = <>
+        Range.UseMin = True
+        Title.LabelFont.Orientation = 900
+        Title.LabelBrush.Style = bsClear
+      end    
+      item
+        Grid.Visible = False
+        Intervals.MaxLength = 255
+        Intervals.MinLength = 0
+        Intervals.NiceSteps = '0|51|255'
+        Alignment = calBottom
+        Marks.Format = '%0:.3g'
+        Marks.LabelBrush.Style = bsClear
+        Marks.Range.Max = 255
+        Marks.Range.UseMax = True
+        Marks.Range.UseMin = True
+        Marks.Style = smsCustom
+        Minors = <>
+        Range.Max = 255
+        Range.UseMax = True
+        Range.UseMin = True
+        Title.LabelBrush.Style = bsClear
+      end>
+    BackColor = clWhite
+    Foot.Brush.Color = clBtnFace
+    Foot.Font.Color = clBlue
+    Legend.Alignment = laBottomCenter
+    Legend.ColumnCount = 3
+    Legend.Visible = True
+    Title.Brush.Color = clBtnFace
+    Title.Font.Color = clBlue
+    Title.Text.Strings = (
+      'TAChart'
+    )
+    object RChannel: TLineSeries
+      Title = 'R'
+      LinePen.Color = clRed
+      OnCustomDrawPointer = RChannelCustomDrawPointer
+    end
+    object GChannel: TLineSeries
+      Title = 'G'
+      LinePen.Color = clGreen
+    end
+    object BChannel: TLineSeries
+      Title = 'B'
+      LinePen.Color = clBlue
+    end
+  end
+  object MainMenu1: TMainMenu
+    Left = 634
+    Top = 96
+    object MenuItem1: TMenuItem
+      Caption = 'Archivo'
+      object MenuItem4: TMenuItem
+        Caption = 'Abrir Scanline'
+        OnClick = MenuItem4Click
+      end
+    end
+    object MenuItem3: TMenuItem
+      Caption = 'Filtros'
+      OnClick = MenuItem3Click
+      object MenuItem5: TMenuItem
+        Caption = 'Negativo'
+        OnClick = MenuItem5Click
+      end
+      object MenuItem7: TMenuItem
+        Caption = 'Escala de Grises'
+        OnClick = MenuItem7Click
+      end
+      object MenuItem8: TMenuItem
+        Caption = 'Logaritmo natural'
+        OnClick = MenuItem8Click
+      end
+      object MenuItem12: TMenuItem
+        Caption = 'Gamma'
+        OnClick = MenuItem12Click
+      end
+    end
+    object MenuItem6: TMenuItem
+      Caption = 'Conversión a otro modelo'
+      Enabled = False
+      OnClick = MenuItem6Click
+      object MenuItem2: TMenuItem
+        Caption = 'RGB a HSV'
+        OnClick = MenuItem2Click
+      end
+      object MenuItem9: TMenuItem
+        Caption = 'HSV a RGB'
+        Enabled = False
+        OnClick = MenuItem9Click
+      end
+    end
+    object MenuItem10: TMenuItem
+      Caption = 'Operaciones'
+      object MenuItem11: TMenuItem
+        Caption = 'Binarización'
+        OnClick = MenuItem11Click
+      end
+    end
+  end
+  object OpenPictureDialog1: TOpenPictureDialog
+    FileName = 'C:\Users\R2ro-ThinkPad\Desktop\3-AccesoImagen'
+    Filter = 'BMPs (*.bmp)|*.bmp'
+    InitialDir = 'C:\Users\R2ro-ThinkPad\Desktop\'
+    Left = 634
+    Top = 48
+  end
+end
