@@ -5,7 +5,7 @@ unit Unit1;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, Menus, Unit2,
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, Menus, Unit2, Unit3,
   ExtDlgs, LCLIntf, ComCtrls, TAGraph, TASeries, math, TADrawUtils, TACustomSeries;
 
 type
@@ -392,34 +392,33 @@ var
   i,j   : Integer;
   k     : Byte;
 begin
-  gamma := 1/5;
-  //Abre ventana para seleccionar r.
-  {Form2.setParameters(ANCHO, ALTO);
-  Form2.Showmodal;
-  //En caso de haber seleccionado un valor r.
-  if form2.ModalResult = MROk then
+  gamma := 1;
+  //Abre ventana para seleccionar gamma.
+  Form3.init();
+  Form3.Showmodal;
+  //En caso de haber seleccionado un valor gamma.
+  if Form3.ModalResult = MROk then
   begin
-    r := Form2.TrackBar1.Position;
-    binarizar(r);
-  end;}
-  for i:=0 to ALTO-1 do
-  begin
-    for j:=0 to ANCHO-1 do
+    gamma := Form3.FloatSpinEdit1.Value;
+    for i:=0 to ALTO-1 do
     begin
-      for k:=0 to 2 do
+      for j:=0 to ANCHO-1 do
       begin
-        MAT[i,j,k]:= round(power(MAT[i,j,k]/255, gamma) * 255);
-      end; //k
-    end; //j
-  end; //i
+        for k:=0 to 2 do
+        begin
+          MAT[i,j,k]:= round(power(MAT[i,j,k]/255, gamma) * 255);
+        end; //k
+      end; //j
+    end; //i
 
-  //Se copia el resultado de la matriz al bitmap.
-  copMB(ALTO,ANCHO,MAT,BMAP);
+    //Se copia el resultado de la matriz al bitmap.
+    copMB(ALTO,ANCHO,MAT,BMAP);
 
-  //Visualizar el resultado en pantalla.
-  Image1.Picture.Assign(BMAP);
-  //Se actualiza el histograma de la imagen.
-  grafHist();
+    //Visualizar el resultado en pantalla.
+    Image1.Picture.Assign(BMAP);
+    //Se actualiza el histograma de la imagen.
+    grafHist();
+  end;
 end;
 
 //Copiar el contenido de la imagen a una Matriz.

@@ -9,10 +9,10 @@ object Form2: TForm2
   OnCreate = FormCreate
   LCLVersion = '2.0.12.0'
   object TrackBar1: TTrackBar
-    Left = 24
+    Left = 16
     Height = 25
     Top = 40
-    Width = 272
+    Width = 282
     HelpType = htKeyword
     Min = 3
     OnChange = TrackBar1Change
