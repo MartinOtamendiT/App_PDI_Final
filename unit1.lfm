@@ -202,7 +202,7 @@ object Form1: TForm1
         OnClick = MenuItem11Click
       end
       object MenuItem13: TMenuItem
-        Caption = 'Contraste'
+        Caption = 'Aumentar contraste'
         OnClick = MenuItem13Click
       end
     end

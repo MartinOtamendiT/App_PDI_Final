@@ -66,7 +66,7 @@ end;
 //Procedimiento que inicializa valores en el form 3.
 procedure TForm3.init();
 begin
-  FloatSpinEdit1.Value := 0.00;
+  FloatSpinEdit1.Value := 0.01;
 end;
 
 end.

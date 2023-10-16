@@ -5,7 +5,7 @@ unit Unit1;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, Menus, Unit2, Unit3,
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, Menus, Unit2, Unit3, Unit4,
   ExtDlgs, LCLIntf, ComCtrls, TAGraph, TASeries, math, TADrawUtils, TACustomSeries;
 
 type
@@ -438,9 +438,40 @@ begin
   end;
 end;
 
+//Aumentar contraste.
 procedure TForm1.MenuItem13Click(Sender: TObject);
+var
+  alpha : Float;
+  i,j   : Integer;
+  k     : Byte;
 begin
-  // 255/2 * (1 + tanh(alpha * (v - (255/2))));
+  alpha := 3;
+  //Abre ventana para seleccionar alpha.
+  Form4.init();
+  Form4.Showmodal;
+  //En caso de haber seleccionado un valor alpha.
+  if Form4.ModalResult = MROk then
+  begin
+    alpha := Form4.FloatSpinEdit1.Value;
+    for i:=0 to ALTO-1 do
+    begin
+      for j:=0 to ANCHO-1 do
+      begin
+        for k:=0 to 2 do
+        begin
+          MAT[i,j,k]:= round((255/2) * (1 + tanh(alpha * (MAT[i,j,k] - (255/2)))));
+        end; //k
+      end; //j
+    end; //i
+
+    //Se copia el resultado de la matriz al bitmap.
+    copMB(ALTO,ANCHO,MAT,BMAP);
+
+    //Visualizar el resultado en pantalla.
+    Image1.Picture.Assign(BMAP);
+    //Se actualiza el histograma de la imagen.
+    grafHist();
+  end;
 end;
 
 //Restaurar imagen a su estado original.

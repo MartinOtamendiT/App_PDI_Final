@@ -202,7 +202,7 @@ object Form1: TForm1
         OnClick = MenuItem11Click
       end
       object MenuItem13: TMenuItem
-        Caption = 'Contraste'
+        Caption = 'Aumentar contraste'
         OnClick = MenuItem13Click
       end
     end
@@ -215,8 +215,7 @@ object Form1: TForm1
     Top = 48
   end
   object SavePictureDialog1: TSavePictureDialog
-    Filter = 'Bitmaps (*.bmp)|*.bmp'
-    FilterIndex = 4
+    Filter = 'BMPs (*.bmp)|*.bmp'
     Left = 634
     Top = 152
   end

@@ -15,8 +15,10 @@ object Form3: TForm3
     Width = 66
     Alignment = taCenter
     AutoSelect = False
+    MinValue = 0.01
     OnChange = FloatSpinEdit1Change
     TabOrder = 0
+    Value = 0.01
   end
   object Label1: TLabel
     Left = 32

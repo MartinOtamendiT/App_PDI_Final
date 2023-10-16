@@ -25,7 +25,8 @@ type
   private
 
   public
-
+    //Procedimiento que inicializa valores en el form 3.
+    procedure init();
   end;
 
 var
@@ -44,7 +45,7 @@ end;
 
 procedure TForm3.BitBtn1Click(Sender: TObject);
 begin
-  FloatSpinEdit1.Value := 0.00;
+
 end;
 
 procedure TForm3.FloatSpinEdit1Change(Sender: TObject);
@@ -60,6 +61,12 @@ end;
 procedure TForm3.Label1Click(Sender: TObject);
 begin
 
+end;
+
+//Procedimiento que inicializa valores en el form 3.
+procedure TForm3.init();
+begin
+  FloatSpinEdit1.Value := 0.01;
 end;
 
 end.
