@@ -23,6 +23,9 @@ type
     MenuItem10: TMenuItem;
     MenuItem11: TMenuItem;
     MenuItem12: TMenuItem;
+    MenuItem13: TMenuItem;
+    MenuItem14: TMenuItem;
+    MenuItem15: TMenuItem;
     RChannel: TLineSeries;
     Image1: TImage;
     MainMenu1: TMainMenu;
@@ -36,6 +39,7 @@ type
     MenuItem8: TMenuItem;
     MenuItem9: TMenuItem;
     OpenPictureDialog1: TOpenPictureDialog;
+    SavePictureDialog1: TSavePictureDialog;
     ScrollBox1: TScrollBox;
     StatusBar1: TStatusBar;
     procedure FormCreate(Sender: TObject);
@@ -43,6 +47,9 @@ type
       );
     procedure MenuItem11Click(Sender: TObject);
     procedure MenuItem12Click(Sender: TObject);
+    procedure MenuItem13Click(Sender: TObject);
+    procedure MenuItem14Click(Sender: TObject);
+    procedure MenuItem15Click(Sender: TObject);
     procedure MenuItem2Click(Sender: TObject);
     procedure MenuItem3Click(Sender: TObject);
     procedure MenuItem4Click(Sender: TObject);
@@ -62,12 +69,15 @@ type
     procedure copBM(al,an:Integer; var M:MATRGB; B:Tbitmap);
     //Copiar de matriz a BITmap.
     procedure copMB(al,an: Integer; M:MATRGB; var B:Tbitmap);
+    //Copiar de Matriz a Matriz.
+    procedure copMtoM(al,an:Integer; var MOrigin:MATRGB; var MCopy:MATRGB);
     //Graficar histograma de la imagen.
     procedure grafHist();
     //Convierte la imagen a escala de grises.
     procedure toGray();
     //Aplica binarización dinámica a la imagen.
     procedure binarizar(r: Integer);
+
   end;
 
 //Variables globales.
@@ -75,7 +85,9 @@ var
   Form1: TForm1;
   //Dimensiones de la imagen.
   ALTO, ANCHO   : Integer;
-  MAT           :MATRGB;
+  //Matrices de la imagen.
+  MAT           : MATRGB;
+  MATOrigin     : MATRGB;
   //Objeto orientado a directivas/metodos para .BMP.
   BMAP          :Tbitmap;
 
@@ -176,16 +188,21 @@ begin
 
     StatusBar1.Panels[8].Text:= IntToStr(ALTO) + 'x' + IntToStr(ANCHO);
     SetLength(MAT,ALTO,ANCHO,3);
-    copBM(ALTO,ANCHO,MAT,BMAP);
+    SetLength(MATOrigin,ALTO,ANCHO,3);
+    copBM(ALTO, ANCHO, MAT, BMAP);
+    copMtoM(ALTO, ANCHO, MAT, MATOrigin); //Se guarda una copia del edo. original de la matriz.
     Image1.Picture.Assign(BMAP); //Visualizar imagen.
 
     //Se grafica el histograma de la imagen.
     grafHist();
+
     //Habilita las opciones del menú.
-    MenuItem3.Enabled := True;
-    MenuItem6.Enabled := True;
-    MenuItem9.Enabled := False;
-    MenuItem2.Enabled := True; //Habilita conversión a HSV
+    MenuItem3.Enabled := True; //Habilita menú de filtros.
+    MenuItem6.Enabled := True; //Habilita menú de conversión de color.
+    MenuItem9.Enabled := False; //Deshabilita conversión a RGB.
+    MenuItem2.Enabled := True; //Habilita conversión a HSV.
+    MenuItem14.Enabled := True; //Habilita opción Restaurar.
+    MenuItem15.Enabled := True; //Habilita opción Guardar como.
     //Si la imagen es de NxN, se habilita la binarización.
     If ANCHO = ALTO then
       MenuItem11.Enabled := True
@@ -394,6 +411,7 @@ var
 begin
   gamma := 1;
   //Abre ventana para seleccionar gamma.
+  Form3.init();
   Form3.Showmodal;
   //En caso de haber seleccionado un valor gamma.
   if Form3.ModalResult = MROk then
@@ -418,6 +436,34 @@ begin
     //Se actualiza el histograma de la imagen.
     grafHist();
   end;
+end;
+
+procedure TForm1.MenuItem13Click(Sender: TObject);
+begin
+  // 255/2 * (1 + tanh(alpha * (v - (255/2))));
+end;
+
+//Restaurar imagen a su estado original.
+procedure TForm1.MenuItem14Click(Sender: TObject);
+begin
+  //Copia el contenido de la matriz con el edo. original a la matriz de imagen.
+  copMtoM(ALTO, ANCHO, MATOrigin, MAT);
+  //Se copia el resultado de la matriz al bitmap.
+  copMB(ALTO,ANCHO,MAT,BMAP);
+
+  //Visualizar el resultado en pantalla.
+  Image1.Picture.Assign(BMAP);
+  //Se actualiza el histograma de la imagen.
+  grafHist();
+  MenuItem2.Enabled := True; //Habilita conversión a HSV
+  MenuItem9.Enabled := False; //Deshabilita conversión a RGB.
+end;
+
+//Guardar imagen.
+procedure TForm1.MenuItem15Click(Sender: TObject);
+begin
+  if SavePictureDialog1.Execute then
+    BMAP.SaveToFile(SavePictureDialog1.FileName);
 end;
 
 //Copiar el contenido de la imagen a una Matriz.
@@ -456,9 +502,9 @@ begin
     for j:=0 to an-1 do
     begin
        k:=3*j;
-       MAT[i,j,0]:=P[k+2];
-       MAT[i,j,1]:=P[k+1];
-       MAT[i,j,2]:=P[k];
+       M[i,j,0]:=P[k+2];
+       M[i,j,1]:=P[k+1];
+       M[i,j,2]:=P[k];
     end; //j
   end; //i
 end;
@@ -480,11 +526,23 @@ begin
     //Asignando valores de matriz al apuntador scanline--> Bitmap.
     begin
        k:=3*j;
-       P[k+2]:=MAT[i,j,0];
-       P[k+1]:=MAT[i,j,1];
-       P[k]:=MAT[i,j,2];
+       P[k+2] := M[i,j,0];
+       P[k+1] := M[i,j,1];
+       P[k] := M[i,j,2];
     end; //j
   end; //i
+end;
+
+//Copiar de Matriz a Matriz.
+procedure Tform1.copMtoM(al,an:Integer; var MOrigin:MATRGB; var MCopy:MATRGB);
+var
+  i,j : Integer;
+  k :  Byte;
+begin
+  for i:=0 to al-1 do
+    for j:=0 to an-1 do
+      for k:=0 to 2 do
+        MCopy[i,j,k] := MOrigin[i,j,k];
 end;
 
 //Graficar histograma de la imagen.

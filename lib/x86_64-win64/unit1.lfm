@@ -147,8 +147,18 @@ object Form1: TForm1
     object MenuItem1: TMenuItem
       Caption = 'Archivo'
       object MenuItem4: TMenuItem
-        Caption = 'Abrir Scanline'
+        Caption = 'Abrir...'
         OnClick = MenuItem4Click
+      end
+      object MenuItem14: TMenuItem
+        Caption = 'Restaurar'
+        Enabled = False
+        OnClick = MenuItem14Click
+      end
+      object MenuItem15: TMenuItem
+        Caption = 'Guardar como...'
+        Enabled = False
+        OnClick = MenuItem15Click
       end
     end
     object MenuItem3: TMenuItem
@@ -191,6 +201,10 @@ object Form1: TForm1
         Caption = 'Binarización'
         OnClick = MenuItem11Click
       end
+      object MenuItem13: TMenuItem
+        Caption = 'Contraste'
+        OnClick = MenuItem13Click
+      end
     end
   end
   object OpenPictureDialog1: TOpenPictureDialog
@@ -199,5 +213,10 @@ object Form1: TForm1
     InitialDir = 'C:\Users\R2ro-ThinkPad\Desktop\'
     Left = 634
     Top = 48
+  end
+  object SavePictureDialog1: TSavePictureDialog
+    Filter = 'BMPs (*.bmp)|*.bmp'
+    Left = 634
+    Top = 152
   end
 end
