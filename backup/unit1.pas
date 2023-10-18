@@ -43,8 +43,9 @@ type
     ScrollBox1: TScrollBox;
     StatusBar1: TStatusBar;
     procedure FormCreate(Sender: TObject);
-    procedure Image1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer
-      );
+    procedure Image1MouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure Image1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+    procedure Image1MouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure MenuItem11Click(Sender: TObject);
     procedure MenuItem12Click(Sender: TObject);
     procedure MenuItem13Click(Sender: TObject);
@@ -61,7 +62,8 @@ type
     procedure RChannelCustomDrawPointer(ASender: TChartSeries;
       ADrawer: IChartDrawer; AIndex: Integer; ACenter: TPoint);
   private
-
+    StartPoint, EndPoint: TPoint;
+    Drawing: Boolean;
   public
     //Copiar de imagen a matriz con Canvas.
     procedure copiaIM(al,an: Integer; var M:MATRGB);
@@ -372,10 +374,23 @@ procedure TForm1.FormCreate(Sender: TObject);
 begin
   //Crear el objeto BMAP.
   BMAP:=TBitmap.Create;
+  //Selección en falso.
+  Drawing := False;
 end;
 
-procedure TForm1.Image1MouseMove(Sender: TObject; Shift: TShiftState; X,
-  Y: Integer);
+//
+procedure TForm1.Image1MouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+if Button = mbLeft then
+  begin
+    // Iniciar la selección en el punto del clic
+    StartPoint := Point(X, Y);
+    Drawing := True;
+  end;
+end;
+
+//Actualiza la posición de mouse.
+procedure TForm1.Image1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
 begin
   //Al mover el mouse, se indican las coordenadas X Y.
   StatusBar1.Panels[1].Text:= IntToStr(X);
@@ -383,6 +398,33 @@ begin
   StatusBar1.Panels[4].Text:= IntToStr(MAT[y,x,0]);
   StatusBar1.Panels[5].Text:= IntToStr(MAT[y,x,1]);
   StatusBar1.Panels[6].Text:= IntToStr(MAT[y,x,2]);
+
+  if Drawing then
+  begin
+    // Actualizar el extremo de la selección mientras se arrastra
+    EndPoint := Point(X, Y);
+    // Dibujar un rectángulo de selección provisional
+    Image1.Canvas.Pen.Color:=CLblue;  //color azul de pluma
+    Image1.Canvas.brush.Color:=CLYellow;  //color amarillo de brocha
+    Image1.Canvas.Rectangle(StartPoint.X, StartPoint.Y, EndPoint.X,EndPoint.Y);
+  end;
+end;
+
+//
+procedure TForm1.Image1MouseUp(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; X, Y: Integer);
+begin
+  if Button = mbLeft then
+  begin
+    // Finalizar la selección en el punto del lanzamiento
+    EndPoint := Point(X, Y);
+    StatusBar1.Panels[9].Text:= IntToStr(EndPoint.X);
+    Drawing := False;
+
+    //Dibujar el rectángulo final de selección
+    //Image1.Canvas.Rectangle(StartPoint.X, StartPoint.Y, EndPoint.X,EndPoint.Y);
+    Image1.Canvas.DrawFocusRect(Rectangle(StartPoint, EndPoint));
+  end;
 end;
 
 //Procedimiento que pide parámetro r y aplica binarización dinámica.
@@ -446,10 +488,10 @@ var
   k     : Byte;
 begin
   alpha := 3;
-  //Abre ventana para seleccionar gamma.
+  //Abre ventana para seleccionar alpha.
   Form4.init();
   Form4.Showmodal;
-  //En caso de haber seleccionado un valor gamma.
+  //En caso de haber seleccionado un valor alpha.
   if Form4.ModalResult = MROk then
   begin
     alpha := Form4.FloatSpinEdit1.Value;

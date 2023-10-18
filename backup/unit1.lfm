@@ -28,7 +28,9 @@ object Form1: TForm1
       Width = 136
       AutoSize = True
       Enabled = False
+      OnMouseDown = Image1MouseDown
       OnMouseMove = Image1MouseMove
+      OnMouseUp = Image1MouseUp
     end
   end
   object StatusBar1: TStatusBar
