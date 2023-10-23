@@ -1,23 +1,23 @@
 object Form1: TForm1
-  Left = 346
-  Height = 478
-  Top = 120
-  Width = 813
+  Left = 238
+  Height = 606
+  Top = 58
+  Width = 971
   Caption = 'Form1'
-  ClientHeight = 458
-  ClientWidth = 813
+  ClientHeight = 586
+  ClientWidth = 971
   Menu = MainMenu1
   OnCreate = FormCreate
   LCLVersion = '2.0.12.0'
   object ScrollBox1: TScrollBox
-    Left = 40
-    Height = 337
-    Top = 40
-    Width = 381
+    Left = 16
+    Height = 529
+    Top = 16
+    Width = 536
     HorzScrollBar.Page = 136
     VertScrollBar.Page = 120
-    ClientHeight = 333
-    ClientWidth = 377
+    ClientHeight = 525
+    ClientWidth = 532
     ParentFont = False
     TabOrder = 0
     object Image1: TImage
@@ -36,8 +36,8 @@ object Form1: TForm1
   object StatusBar1: TStatusBar
     Left = 0
     Height = 23
-    Top = 435
-    Width = 813
+    Top = 563
+    Width = 971
     Panels = <    
       item
         Text = 'X,Y'
@@ -82,9 +82,9 @@ object Form1: TForm1
     SimplePanel = False
   end
   object Chart1: TChart
-    Left = 456
+    Left = 584
     Height = 264
-    Top = 40
+    Top = 16
     Width = 324
     AxisList = <    
       item
@@ -193,7 +193,6 @@ object Form1: TForm1
       end
       object MenuItem9: TMenuItem
         Caption = 'HSV a RGB'
-        Enabled = False
         OnClick = MenuItem9Click
       end
     end

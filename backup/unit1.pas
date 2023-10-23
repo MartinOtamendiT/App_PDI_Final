@@ -72,6 +72,8 @@ type
     procedure copMB(al,an: Integer; M:MATRGB; var B:Tbitmap);
     //Copiar de Matriz a Matriz.
     procedure copMtoM(al,an:Integer; var MOrigin:MATRGB; var MCopy:MATRGB);
+    //Intercambia los puntos de origen y fin de la selección.
+    procedure exchangeStartEnd();
     //Graficar histograma de la imagen.
     procedure grafHist();
     //Convierte la imagen a escala de grises.
@@ -110,9 +112,10 @@ var
   R,G,B       : Real;
   H,S,V       : Real;
 begin
-  for i:=0 to ALTO-1 do
+  exchangeStartEnd();
+  for i:=StartPoint.Y to EndPoint.Y do
   begin
-    for j:=0 to ANCHO-1 do
+    for j:=StartPoint.X to EndPoint.X do
     begin
       //Se convierten los valores RGB de 0-255 a 0-1.
       R := MAT[i,j,0]/255;
@@ -165,8 +168,8 @@ begin
   GChannel.title := 'S';
   RChannel.title := 'V';
   //Deshabilita conversión a HSV. Habilita conversión a RGB.
-  MenuItem2.Enabled := False;
-  MenuItem9.Enabled := True;
+  //MenuItem2.Enabled := False;
+  //MenuItem9.Enabled := True;
 end;
 
 procedure TForm1.MenuItem3Click(Sender: TObject);
@@ -206,15 +209,15 @@ begin
     //Habilita las opciones del menú.
     MenuItem3.Enabled := True; //Habilita menú de filtros.
     MenuItem6.Enabled := True; //Habilita menú de conversión de color.
-    MenuItem9.Enabled := False; //Deshabilita conversión a RGB.
-    MenuItem2.Enabled := True; //Habilita conversión a HSV.
+    //MenuItem9.Enabled := False; //Deshabilita conversión a RGB.
+    //MenuItem2.Enabled := True; //Habilita conversión a HSV.
     MenuItem14.Enabled := True; //Habilita opción Restaurar.
     MenuItem15.Enabled := True; //Habilita opción Guardar como.
     //Si la imagen es de NxN, se habilita la binarización.
-    If ANCHO = ALTO then
+    {If ANCHO = ALTO then
       MenuItem11.Enabled := True
     else
-      MenuItem11.Enabled := False;
+      MenuItem11.Enabled := False;}
   end;
 end;
 
@@ -224,9 +227,10 @@ var
   i,j     :  Integer;
   k       :  Byte;
 begin
-  for i:=0 to ALTO-1 do
+  exchangeStartEnd();
+  for i:=StartPoint.Y to EndPoint.Y do
   begin
-    for j:=0 to ANCHO-1 do
+    for j:=StartPoint.X to EndPoint.X do
     begin
       for k:=0 to 2 do
       begin
@@ -237,7 +241,6 @@ begin
 
   //Se copia el resultado de la matriz al bitmap.
   copMB(ALTO,ANCHO,MAT,BMAP);
-
   //Visualizar el resultado en pantalla.
   Image1.Picture.Assign(BMAP);
   //Se actualiza el histograma de la imagen.
@@ -271,9 +274,10 @@ var
   k       :  Byte;
   valor   :  real;
 begin
-   for i:=0 to ALTO-1 do
-   begin
-    for j:=0 to ANCHO-1 do
+  exchangeStartEnd();
+  for i:=StartPoint.Y to EndPoint.Y do
+  begin
+    for j:=StartPoint.X to EndPoint.X do
     begin
       for k:=0 to 2 do
       begin
@@ -281,11 +285,10 @@ begin
         MAT[i,j,k]:= round(valor);
       end;
     end; //j
-   end; //i
+  end; //i
 
   //Se copia el resultado de la matriz al bitmap.
   copMB(ALTO,ANCHO,MAT,BMAP);
-
   //Visualizar el resultado en pantalla.
   Image1.Picture.Assign(BMAP);
   //Se actualiza el histograma de la imagen.
@@ -300,9 +303,10 @@ var
   R,G,B       : Real;
   H,S,V       : Real;
 begin
-  for i:=0 to ALTO-1 do
+  exchangeStartEnd();
+  for i:=StartPoint.Y to EndPoint.Y do
   begin
-    for j:=0 to ANCHO-1 do
+    for j:=StartPoint.X to EndPoint.X do
     begin
       //Se convierten los valores HSV a su escala (0-1 y 0-360).
       V := MAT[i,j,0]/255;
@@ -365,8 +369,8 @@ begin
   //Se actualiza el histograma de la imagen.
   grafHist();
   //Deshabilita conversión a RGB. Habilita conversión a HSV.
-  MenuItem2.Enabled := True;
-  MenuItem9.Enabled := False;
+  //MenuItem2.Enabled := True;
+  //MenuItem9.Enabled := False;
 end;
 
 procedure TForm1.RChannelCustomDrawPointer(ASender: TChartSeries;
@@ -414,35 +418,38 @@ end;
 //Actualiza la posición del mouse al moverse.
 procedure TForm1.Image1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
 begin
-  //Al mover el mouse, se indican las coordenadas X Y.
-  StatusBar1.Panels[1].Text:= IntToStr(X);
-  StatusBar1.Panels[2].Text:= IntToStr(Y);
-  StatusBar1.Panels[4].Text:= IntToStr(MAT[y,x,0]);
-  //StatusBar1.Panels[5].Text:= IntToStr(MAT[y,x,1]);
-  //StatusBar1.Panels[6].Text:= IntToStr(MAT[y,x,2]);
-
-  //Detecta si se está presionado el botón izquierdo del mouse.
-  if selectionFlag then
+  //Al mover el mouse, se indican las coordenadas X,Y y los valores RGB.
+  if ((X >= 0) AND (X < ANCHO)) AND ((Y >= 0) AND (Y < ALTO)) then
   begin
-    //El rectángulo de selección se traza en sentido antihorario.
-    with Image1.Canvas do begin
-      //Realiza un primer trazo del rectángulo.
-      Pen.mode := pmXor;
-      MoveTo(StartPoint);
-      LineTo(StartPoint.X, EndPoint.Y);
-      LineTo(EndPoint);
-      LineTo(EndPoint.X, StartPoint.Y);
-      LineTo(StartPoint);
-      //Traza el rectángulo a la par que se mueve el mouse.
-      Pen.mode := pmXor;
-      MoveTo(StartPoint);
-      LineTo(StartPoint.X, Y);
-      LineTo(X, Y);
-      LineTo(X, StartPoint.Y);
-      LineTo(StartPoint);
+    StatusBar1.Panels[1].Text:= IntToStr(X);
+    StatusBar1.Panels[2].Text:= IntToStr(Y);
+    StatusBar1.Panels[4].Text:= IntToStr(MAT[y,x,0]);
+    StatusBar1.Panels[5].Text:= IntToStr(MAT[y,x,1]);
+    StatusBar1.Panels[6].Text:= IntToStr(MAT[y,x,2]);
+
+    //Detecta si se está presionado el botón izquierdo del mouse.
+    if selectionFlag then
+    begin
+      //El rectángulo de selección se traza en sentido antihorario.
+      with Image1.Canvas do begin
+        //Realiza un primer trazo del rectángulo.
+        Pen.mode := pmXor;
+        MoveTo(StartPoint);
+        LineTo(StartPoint.X, EndPoint.Y);
+        LineTo(EndPoint);
+        LineTo(EndPoint.X, StartPoint.Y);
+        LineTo(StartPoint);
+        //Traza el rectángulo a la par que se mueve el mouse.
+        Pen.mode := pmXor;
+        MoveTo(StartPoint);
+        LineTo(StartPoint.X, Y);
+        LineTo(X, Y);
+        LineTo(X, StartPoint.Y);
+        LineTo(StartPoint);
+      end;
+      //Se asegura de registrar el punto final de la selección.
+      EndPoint := Point(X, Y);
     end;
-    //Se asegura de registrar el punto final de la selección.
-    EndPoint := Point(X, Y);
   end;
 end;
 
@@ -490,7 +497,7 @@ begin
   //En caso de haber seleccionado un valor r.
   if form2.ModalResult = MROk then
   begin
-    r := Form2.TrackBar1.Position;
+    r := Form2.TrackBar1.Position - 1;
     binarizar(r);
   end;
 end;
@@ -510,9 +517,10 @@ begin
   if Form3.ModalResult = MROk then
   begin
     gamma := Form3.FloatSpinEdit1.Value;
-    for i:=0 to ALTO-1 do
+    exchangeStartEnd();
+    for i:=StartPoint.Y to EndPoint.Y do
     begin
-      for j:=0 to ANCHO-1 do
+      for j:=StartPoint.X to EndPoint.X do
       begin
         for k:=0 to 2 do
         begin
@@ -546,9 +554,10 @@ begin
   if Form4.ModalResult = MROk then
   begin
     alpha := Form4.FloatSpinEdit1.Value;
-    for i:=0 to ALTO-1 do
+    exchangeStartEnd();
+    for i:=StartPoint.Y to EndPoint.Y do
     begin
-      for j:=0 to ANCHO-1 do
+      for j:=StartPoint.X to EndPoint.X do
       begin
         for k:=0 to 2 do
         begin
@@ -559,7 +568,6 @@ begin
 
     //Se copia el resultado de la matriz al bitmap.
     copMB(ALTO,ANCHO,MAT,BMAP);
-
     //Visualizar el resultado en pantalla.
     Image1.Picture.Assign(BMAP);
     //Se actualiza el histograma de la imagen.
@@ -579,8 +587,8 @@ begin
   Image1.Picture.Assign(BMAP);
   //Se actualiza el histograma de la imagen.
   grafHist();
-  MenuItem2.Enabled := True; //Habilita conversión a HSV
-  MenuItem9.Enabled := False; //Deshabilita conversión a RGB.
+  //MenuItem2.Enabled := True; //Habilita conversión a HSV
+  //MenuItem9.Enabled := False; //Deshabilita conversión a RGB.
 end;
 
 //Guardar imagen.
@@ -669,6 +677,27 @@ begin
         MCopy[i,j,k] := MOrigin[i,j,k];
 end;
 
+//Intercambia los puntos de origen y fin de la selección.
+procedure tform1.exchangeStartEnd();
+var
+  auxCoord:  integer;
+begin
+  //Si en Y el punto final es menor al de inicio, se realiza el cambio.
+  if EndPoint.Y < StartPoint.Y then
+  begin
+    auxCoord := StartPoint.Y;
+    StartPoint.Y := EndPoint.Y;
+    EndPoint.Y := auxCoord;
+  end;
+  //Si en X el punto final es menor al de inicio, se realiza el cambio.
+  if EndPoint.X< StartPoint.X then
+  begin
+    auxCoord := StartPoint.X;
+    StartPoint.X := EndPoint.X;
+    EndPoint.X := auxCoord;
+  end;
+end;
+
 //Graficar histograma de la imagen.
 procedure tform1.grafHist();
 type
@@ -730,9 +759,10 @@ var
   k       :  Byte;
   mean    :  integer;
 begin
-  for i:=0 to ALTO-1 do
+  exchangeStartEnd();
+  for i:=StartPoint.Y to EndPoint.Y do
   begin
-    for j:=0 to ANCHO-1 do
+    for j:=StartPoint.X to EndPoint.X do
     begin
       //Se obtiene promedio de los 3 canales.
       mean := 0;
@@ -763,36 +793,37 @@ begin
   toGray();
   //********************************** Binarización de regiones rxr **********************************
   //Se calcula el número de regiones de r píxeles a lo ancho y lo alto.
-  regionesAn := trunc(ANCHO / r);
-  regionesAl := trunc(ALTO / r);
+  exchangeStartEnd();
+  regionesAn := trunc(abs(EndPoint.X - StartPoint.X) / r);
+  regionesAl := trunc(abs(EndPoint.Y - StartPoint.Y) / r);
   //Aplicamos la binarización en la región regy,regx de rxr píxeles.
   for regy:=0 to regionesAl-1 do
   begin
     for regx:=0 to regionesAn-1 do
     begin
       //Se determina límite regional en lo alto.
-      limitRegY := (regy+1)*r - 1;
+      limitRegY := StartPoint.Y + (regy+1)*r;
       //Se obtiene la suma de las intensidades de los píxeles en la región.
       mean := 0;
-      for i:=regy*r to limitRegY do
+      for i:=StartPoint.Y+regy*r to limitRegY do
       begin
         //Se determina límite regional en el ancho.
-        limitRegX := (regx+1)*r - 1;
-        for j:=regx*r to limitRegX do
+        limitRegX := StartPoint.X + (regx+1)*r;
+        for j:=StartPoint.X+regx*r to limitRegX do
         begin
           mean := mean + MAT[i,j,0];
         end; //i
       end; //j
 
       //Se obtiene el promedio de las intensidades.
-      mean := round(mean /(r*r));
+      mean := round(mean /((r+1)*(r+1)));
 
       //Se aplica la binarización a cada píxel de la región.
-      for i:=regy*r to limitRegY do
+      for i:=StartPoint.Y+regy*r to limitRegY do
       begin
         //Se determina límite regional en el ancho.
-        limitRegX := (regx+1)*r - 1;
-        for j:=regx*r to limitRegX do
+        limitRegX := StartPoint.X + (regx+1)*r;
+        for j:=StartPoint.X+regx*r to limitRegX do
         begin
           //El valor es menor al umbral.
           If MAT[i,j,0] < mean then
@@ -817,42 +848,42 @@ begin
   lastPixelX := limitRegX;
   lastPixelY := limitRegY;
   //Calcula píxeles sobrantes a lo ancho y en lo alto.
-  anchoSobrante := ANCHO - lastPixelX - 1;
-  altoSobrante := ALTO - lastPixelY - 1;
+  anchoSobrante := EndPoint.X - lastPixelX;
+  altoSobrante := EndPoint.Y - lastPixelY;
 
   //********************************** Binarización de píxeles sobrantes a lo ancho **********************************
   //Verifica que existan píxeles sobrantes a lo ancho.
   if anchoSobrante > 0 then
   begin
     //El alto se dividirá en 3 regiones de r píxeles.
-    r := trunc(ALTO / 3);
+    r := trunc(abs(EndPoint.Y - StartPoint.Y) / 3);
     //Aplicamos la binarización a las 3 regiones.
     for regy:=0 to 2 do
     begin
       //Se determina límite regional en lo alto.
       //Si es la última región, entonces se tomarán los píxeles que resten del alto.
       if regy = 2 then
-        limitRegY := ALTO-1
+        limitRegY := EndPoint.Y
       else
-        limitRegY := (regy+1)*r - 1;
+        limitRegY := StartPoint.Y + (regy+1)*r;
 
       //Se obtiene la suma de las intensidades de los píxeles en la región.
       mean := 0;
-      for i:=regy*r to limitRegY do
+      for i:=StartPoint.Y + regy*r to limitRegY do
       begin
-        for j:=lastPixelX to ANCHO-1 do
+        for j:=lastPixelX to EndPoint.X do
         begin
           mean := mean + MAT[i,j,0];
         end; //i
       end; //j
 
       //Se obtiene el promedio de las intensidades.
-      mean := round(mean / (((limitRegY - regy*r) + 1) * anchoSobrante));
+      mean := round(mean / (((limitRegY - (StartPoint.Y + regy*r)) + 1) * anchoSobrante));
 
       //Se aplica la binarización a cada píxel de la región.
-      for i:=regy*r to limitRegY do
+      for i:=StartPoint.Y + regy*r to limitRegY do
       begin
-        for j:= lastPixelX to ANCHO-1 do
+        for j:= lastPixelX to EndPoint.X do
         begin
           //El valor es menor al umbral.
           If MAT[i,j,0] < mean then
@@ -878,34 +909,34 @@ begin
   if altoSobrante > 0 then
   begin
     //El ancho (hasta el último píxel binarizado rxr) se dividirá en 3 regiones de r píxeles.
-    r := trunc(lastPixelX / 3);
+    r := trunc(abs(EndPoint.X - lastPixelX) / 3);
     //Aplicamos la binarización a las 3 regiones.
     for regx:=0 to 2 do
     begin
       //Se determina límite regional en lo ancho.
       //Si es la última región, entonces se tomarán los píxeles que resten del ancho.
       if regx = 2 then
-        limitRegX := lastPixelX-1
+        limitRegX := lastPixelX
       else
-        limitRegX := (regx+1)*r - 1;
+        limitRegX := StartPoint.X + (regx+1)*r;
 
       //Se obtiene la suma de las intensidades de los píxeles en la región.
       mean := 0;
-      for i:=lastPixelY to ALTO-1 do
+      for i:=lastPixelY to EndPoint.Y do
       begin
-        for j:=regx*r to limitRegX do
+        for j:=StartPoint.X + regx*r to limitRegX do
         begin
           mean := mean + MAT[i,j,0];
         end; //i
       end; //j
 
       //Se obtiene el promedio de las intensidades.
-      mean := round(mean / (((limitRegX - regx*r) + 1) * altoSobrante));
+      mean := round(mean / (((limitRegX - (StartPoint.X + regx*r)) + 1) * altoSobrante));
 
       //Se aplica la binarización a cada píxel de la región.
-      for i:=lastPixelY to ALTO-1 do
+      for i:=lastPixelY to EndPoint.Y do
       begin
-        for j:=regx*r to limitRegX do
+        for j:=StartPoint.X + regx*r to limitRegX do
         begin
           //El valor es menor al umbral.
           If MAT[i,j,0] < mean then
