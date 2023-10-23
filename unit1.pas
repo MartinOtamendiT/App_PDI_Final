@@ -62,8 +62,7 @@ type
     procedure RChannelCustomDrawPointer(ASender: TChartSeries;
       ADrawer: IChartDrawer; AIndex: Integer; ACenter: TPoint);
   private
-    StartPoint, EndPoint: TPoint;
-    Drawing: Boolean;
+
   public
     //Copiar de imagen a matriz con Canvas.
     procedure copiaIM(al,an: Integer; var M:MATRGB);
@@ -85,6 +84,9 @@ type
 //Variables globales.
 var
   Form1: TForm1;
+  //Variables para selección en imagen.
+  StartPoint, EndPoint: TPoint;
+  selectionFlag: Boolean;
   //Dimensiones de la imagen.
   ALTO, ANCHO   : Integer;
   //Matrices de la imagen.
@@ -181,6 +183,9 @@ begin
     BMAP.LoadFromFile(OpenPictureDialog1.FileName);
     ALTO:=BMAP.Height;
     ANCHO:=BMAP.Width;
+    //Limpia las variables de selección.
+    StartPoint := Point(0,0);
+    EndPoint := Point(0,0);
 
     //Se garantizan los 8 bits por canal.
     if BMAP.PixelFormat<> pf24bit then
@@ -373,57 +378,103 @@ end;
 procedure TForm1.FormCreate(Sender: TObject);
 begin
   //Crear el objeto BMAP.
-  BMAP:=TBitmap.Create;
-  //Selección en falso.
-  Drawing := False;
+  BMAP := TBitmap.Create;
+  //La selección en la imagen no es permitida.
+  selectionFlag := False;
 end;
 
-//
+//Se activa al presionar el botón del mouse.
 procedure TForm1.Image1MouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
-if Button = mbLeft then
+  //Comienza la selección al presionar el botón izquierdo.
+  if Button = mbLeft then
   begin
-    // Iniciar la selección en el punto del clic
+    //Se activa la bandera de selección.
+    selectionFlag := True;
+    //Limpia la última selección hecha.
+    copMB(ALTO,ANCHO,MAT,BMAP);
+    Image1.Picture.Assign(BMAP);
+    //Se inicia la selección en el punto del click.
     StartPoint := Point(X, Y);
-    Drawing := True;
+    EndPoint := Point(X, Y);
+    //Color y tamaño de la pluma.
+    Image1.Canvas.Pen.Color := clWhite;
+    Image1.Canvas.Pen.Width := 2;
+  end;
+
+  //Cancela la selección al presionar el botón derecho.
+  if Button = mbRight then
+  begin
+    selectionFlag := False;
+    copMB(ALTO,ANCHO,MAT,BMAP);
+    Image1.Picture.Assign(BMAP);
   end;
 end;
 
-//Actualiza la posición de mouse.
+//Actualiza la posición del mouse al moverse.
 procedure TForm1.Image1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
 begin
   //Al mover el mouse, se indican las coordenadas X Y.
   StatusBar1.Panels[1].Text:= IntToStr(X);
   StatusBar1.Panels[2].Text:= IntToStr(Y);
-  StatusBar1.Panels[4].Text:= IntToStr(MAT[y,x,0]);
-  StatusBar1.Panels[5].Text:= IntToStr(MAT[y,x,1]);
-  StatusBar1.Panels[6].Text:= IntToStr(MAT[y,x,2]);
+  //StatusBar1.Panels[4].Text:= IntToStr(MAT[y,x,0]);
+  //StatusBar1.Panels[5].Text:= IntToStr(MAT[y,x,1]);
+  //StatusBar1.Panels[6].Text:= IntToStr(MAT[y,x,2]);
 
-  if Drawing then
+  //Detecta si se está presionado el botón izquierdo del mouse.
+  if selectionFlag then
   begin
-    // Actualizar el extremo de la selección mientras se arrastra
+    //El rectángulo de selección se traza en sentido antihorario.
+    with Image1.Canvas do begin
+      //Realiza un primer trazo del rectángulo.
+      Pen.mode := pmXor;
+      MoveTo(StartPoint);
+      LineTo(StartPoint.X, EndPoint.Y);
+      LineTo(EndPoint);
+      LineTo(EndPoint.X, StartPoint.Y);
+      LineTo(StartPoint);
+      //Traza el rectángulo a la par que se mueve el mouse.
+      Pen.mode := pmXor;
+      MoveTo(StartPoint);
+      LineTo(StartPoint.X, Y);
+      LineTo(X, Y);
+      LineTo(X, StartPoint.Y);
+      LineTo(StartPoint);
+    end;
+    //Se asegura de registrar el punto final de la selección.
     EndPoint := Point(X, Y);
-    // Dibujar un rectángulo de selección provisional
-    Image1.Canvas.Pen.Color:=CLblue;  //color azul de pluma
-    Image1.Canvas.brush.Color:=CLYellow;  //color amarillo de brocha
-    Image1.Canvas.Rectangle(StartPoint.X, StartPoint.Y, EndPoint.X,EndPoint.Y);
   end;
 end;
 
-//
+//Se activa al soltar el botón del mouse.
 procedure TForm1.Image1MouseUp(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
+  //Termina la selección al dejar de presionar el botón izquierdo.
   if Button = mbLeft then
   begin
-    // Finalizar la selección en el punto del lanzamiento
-    EndPoint := Point(X, Y);
-    StatusBar1.Panels[9].Text:= IntToStr(EndPoint.X);
-    Drawing := False;
+    //El rectángulo de selección se traza en sentido antihorario.
+    with Image1.Canvas do begin
+      //Asegura que el rectángulo de selección quede marcado en la imagen.
+      Pen.Color := RGBToColor(94, 246, 255);
+      Brush.Color := clWhite;
+      Pen.mode := pmCopy;
+      Pen.mode := pmMask;
+      MoveTo(StartPoint);
+      LineTo(StartPoint.X, EndPoint.Y);
+      LineTo(EndPoint);
+      LineTo(EndPoint.X, StartPoint.Y);
+      LineTo(StartPoint);
+    end;
+    //Se desactiva la bandera de selección.
+    selectionFlag := False;
+  end;
 
-    //Dibujar el rectángulo final de selección
-    Image1.Canvas.Rectangle(StartPoint.X, StartPoint.Y, EndPoint.X,EndPoint.Y);
-    //Image1.Canvas.DrawFocusRect(Rect(StartPoint, EndPoint));
+  //Los cambios de deselección se aplican al dejar de presionar el botón derecho.
+  if Button = mbRight then
+  begin
+    copMB(ALTO,ANCHO,MAT,BMAP);
+    Image1.Picture.Assign(BMAP);
   end;
 end;
 
