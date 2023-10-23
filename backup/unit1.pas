@@ -483,6 +483,11 @@ begin
     copMB(ALTO,ANCHO,MAT,BMAP);
     Image1.Picture.Assign(BMAP);
   end;
+
+  If abs(EndPoint.X-StartPoint.X) = abs(EndPoint.Y-StartPoint.Y) then
+    MenuItem11.Enabled := True
+  else
+    MenuItem11.Enabled := False;
 end;
 
 //Procedimiento que pide parámetro r y aplica binarización dinámica.
@@ -492,12 +497,12 @@ var
 begin
   r := 3;
   //Abre ventana para seleccionar r.
-  Form2.setParameters(ANCHO, ALTO);
+  Form2.setParameters(abs(EndPoint.X-StartPoint.X), abs(EndPoint.Y-StartPoint.Y));
   Form2.Showmodal;
   //En caso de haber seleccionado un valor r.
   if form2.ModalResult = MROk then
   begin
-    r := Form2.TrackBar1.Position - 1;
+    r := Form2.TrackBar1.Position;
     binarizar(r);
   end;
 end;
@@ -794,35 +799,35 @@ begin
   //********************************** Binarización de regiones rxr **********************************
   //Se calcula el número de regiones de r píxeles a lo ancho y lo alto.
   exchangeStartEnd();
-  regionesAn := trunc(abs(EndPoint.X - StartPoint.X) / r);
-  regionesAl := trunc(abs(EndPoint.Y - StartPoint.Y) / r);
+  regionesAn := trunc(abs(EndPoint.X - StartPoint.X + 1) / r);
+  regionesAl := trunc(abs(EndPoint.Y - StartPoint.Y + 1) / r);
   //Aplicamos la binarización en la región regy,regx de rxr píxeles.
   for regy:=0 to regionesAl-1 do
   begin
     for regx:=0 to regionesAn-1 do
     begin
       //Se determina límite regional en lo alto.
-      limitRegY := StartPoint.Y + (regy+1)*r;
+      limitRegY := StartPoint.Y + (regy+1)*r-1;
       //Se obtiene la suma de las intensidades de los píxeles en la región.
       mean := 0;
       for i:=StartPoint.Y+regy*r to limitRegY do
       begin
         //Se determina límite regional en el ancho.
-        limitRegX := StartPoint.X + (regx+1)*r;
+        limitRegX := StartPoint.X + (regx+1)*r-1;
         for j:=StartPoint.X+regx*r to limitRegX do
         begin
           mean := mean + MAT[i,j,0];
-        end; //i
-      end; //j
+        end; //j
+      end; //i
 
       //Se obtiene el promedio de las intensidades.
-      mean := round(mean /((r+1)*(r+1)));
+      mean := round(mean /(r*r));
 
       //Se aplica la binarización a cada píxel de la región.
       for i:=StartPoint.Y+regy*r to limitRegY do
       begin
         //Se determina límite regional en el ancho.
-        limitRegX := StartPoint.X + (regx+1)*r;
+        limitRegX := StartPoint.X + (regx+1)*r-1;
         for j:=StartPoint.X+regx*r to limitRegX do
         begin
           //El valor es menor al umbral.
