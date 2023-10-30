@@ -5,8 +5,9 @@ unit Unit1;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, Menus, Unit2, Unit3, Unit4,
-  ExtDlgs, LCLIntf, ComCtrls, TAGraph, TASeries, math, TADrawUtils, TACustomSeries;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, Menus, Unit2,
+  Unit3, Unit4, ExtDlgs, LCLIntf, ComCtrls, StdCtrls, TAGraph, TASeries, math,
+  TADrawUtils, TACustomSeries;
 
 type
 
@@ -20,12 +21,17 @@ type
     Chart1: TChart;
     GChannel: TLineSeries;
     BChannel: TLineSeries;
+    Label1: TLabel;
     MenuItem10: TMenuItem;
     MenuItem11: TMenuItem;
     MenuItem12: TMenuItem;
     MenuItem13: TMenuItem;
     MenuItem14: TMenuItem;
     MenuItem15: TMenuItem;
+    MenuItem16: TMenuItem;
+    MenuItem17: TMenuItem;
+    MenuItem18: TMenuItem;
+    MenuItem19: TMenuItem;
     RChannel: TLineSeries;
     Image1: TImage;
     MainMenu1: TMainMenu;
@@ -42,6 +48,12 @@ type
     SavePictureDialog1: TSavePictureDialog;
     ScrollBox1: TScrollBox;
     StatusBar1: TStatusBar;
+    procedure Chart1MouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
+    procedure Chart1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer
+      );
+    procedure Chart1MouseUp(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; X, Y: Integer);
     procedure FormCreate(Sender: TObject);
     procedure Image1MouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure Image1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
@@ -51,6 +63,9 @@ type
     procedure MenuItem13Click(Sender: TObject);
     procedure MenuItem14Click(Sender: TObject);
     procedure MenuItem15Click(Sender: TObject);
+    procedure MenuItem16Click(Sender: TObject);
+    procedure MenuItem18Click(Sender: TObject);
+    procedure MenuItem19Click(Sender: TObject);
     procedure MenuItem2Click(Sender: TObject);
     procedure MenuItem3Click(Sender: TObject);
     procedure MenuItem4Click(Sender: TObject);
@@ -89,6 +104,10 @@ var
   //Variables para selección en imagen.
   StartPoint, EndPoint: TPoint;
   selectionFlag: Boolean;
+  imgSelectionEnabled: Boolean;
+  //Variables para selección en Histograma.
+  StartHist, EndHist: TPoint;
+  selectionFlagHist: Boolean;
   //Dimensiones de la imagen.
   ALTO, ANCHO   : Integer;
   //Matrices de la imagen.
@@ -182,13 +201,10 @@ procedure TForm1.MenuItem4Click(Sender: TObject);
 begin
   if OpenPictureDialog1.execute  then
   begin
-    Image1.Enabled:=True;
+    Image1.Enabled := True;
     BMAP.LoadFromFile(OpenPictureDialog1.FileName);
-    ALTO:=BMAP.Height;
-    ANCHO:=BMAP.Width;
-    //Limpia las variables de selección.
-    StartPoint := Point(0,0);
-    EndPoint := Point(0,0);
+    ALTO := BMAP.Height;
+    ANCHO := BMAP.Width;
 
     //Se garantizan los 8 bits por canal.
     if BMAP.PixelFormat<> pf24bit then
@@ -203,21 +219,27 @@ begin
     copMtoM(ALTO, ANCHO, MAT, MATOrigin); //Se guarda una copia del edo. original de la matriz.
     Image1.Picture.Assign(BMAP); //Visualizar imagen.
 
+    //Inicializa la selección para toda la imagen.
+    StartPoint := Point(0,0);
+    EndPoint := Point(ANCHO-1, ALTO-1);
+    //Desactiva la selección rectangular en la imagen.
+    imgSelectionEnabled := False;
+
     //Se grafica el histograma de la imagen.
+    Chart1.Enabled := True;
     grafHist();
+    //Inicializa puntos de selección del histograma.
+    StartHist := Point(0, 10);
+    EndHist := Point(255, 10);
 
     //Habilita las opciones del menú.
-    MenuItem3.Enabled := True; //Habilita menú de filtros.
-    MenuItem6.Enabled := True; //Habilita menú de conversión de color.
+    MenuItem3.Enabled := True; //Habilita menú de Filtros.
+    MenuItem6.Enabled := True; //Habilita menú de Conversión de modelo.
     //MenuItem9.Enabled := False; //Deshabilita conversión a RGB.
     //MenuItem2.Enabled := True; //Habilita conversión a HSV.
     MenuItem14.Enabled := True; //Habilita opción Restaurar.
     MenuItem15.Enabled := True; //Habilita opción Guardar como.
-    //Si la imagen es de NxN, se habilita la binarización.
-    {If ANCHO = ALTO then
-      MenuItem11.Enabled := True
-    else
-      MenuItem11.Enabled := False;}
+    MenuItem17.Enabled := True; //Habilita opción de Selección.
   end;
 end;
 
@@ -385,13 +407,93 @@ begin
   BMAP := TBitmap.Create;
   //La selección en la imagen no es permitida.
   selectionFlag := False;
+  imgSelectionEnabled := False;
+  //La selección en el histograma no es permitida.
+  selectionFlagHist := False;
 end;
 
-//Se activa al presionar el botón del mouse.
-procedure TForm1.Image1MouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+//Actualiza la posición del mouse al moverse en el histograma.
+procedure TForm1.Chart1MouseMove(Sender: TObject; Shift: TShiftState; X,Y: Integer);
+begin
+  if ((X >= 0) AND (X <= 255)) then
+  begin
+    Label1.Caption := 'Valor X: ' + FloatToStr(X);
+    //Color y tamaño de la pluma.
+    Chart1.Canvas.Pen.Color := RGBToColor(94, 246, 255);
+    Chart1.Canvas.Pen.Width := 5;
+
+    //Detecta si se está presionado el botón izquierdo del mouse.
+    if selectionFlagHist then
+    begin
+      with Chart1.Canvas do begin
+        //Realiza un primer trazo de la línea.
+        Pen.mode := pmXor;
+        MoveTo(StartHist);
+        LineTo(EndHist);
+        //Traza la línea a la par que se mueve el mouse.
+        Pen.mode := pmXor;
+        MoveTo(StartHist);
+        LineTo(X, Y);
+      end;
+      //Se asegura de registrar el punto final de la selección.
+      EndHist := Point(X, Y);
+    end;
+  end;
+end;
+
+//Se activa al soltar el botón del mouse en el histograma.
+procedure TForm1.Chart1MouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  //Termina la selección al dejar de presionar el botón izquierdo.
+  if Button = mbLeft then
+  begin
+    with Chart1.Canvas do begin
+      //Asegura que la línea de selección quede marcada en la imagen.
+      Pen.Color := RGBToColor(0, 206, 189);
+      Pen.mode := pmCopy;
+      MoveTo(StartHist);
+      LineTo(EndHist);
+    end;
+    //Se desactiva la bandera de selección.
+    selectionFlagHist := False;
+  end;
+
+  //Los cambios de deselección se aplican al dejar de presionar el botón derecho.
+  if Button = mbRight then
+  begin
+    grafHist();
+  end;
+end;
+
+//Se activa al presionar el botón del mouse en el histograma.
+procedure TForm1.Chart1MouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
 begin
   //Comienza la selección al presionar el botón izquierdo.
   if Button = mbLeft then
+  begin
+    //Se activa la bandera de selección.
+    selectionFlagHist := True;
+    //Limpia la última selección hecha.
+    grafHist();
+    //Se inicia la selección en el punto del click.
+    StartHist := Point(X, Y);
+    EndHist := Point(X, Y);
+  end;
+
+  //Cancela la selección al presionar el botón derecho.
+  if Button = mbRight then
+  begin
+    selectionFlagHist := False;
+    grafHist();
+  end;
+end;
+
+//*********************************************************************************************************
+//Se activa al presionar el botón del mouse en la imagen.
+procedure TForm1.Image1MouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+begin
+  //Comienza la selección al presionar el botón izquierdo.
+  if ((Button = mbLeft) AND imgSelectionEnabled) then
   begin
     //Se activa la bandera de selección.
     selectionFlag := True;
@@ -415,7 +517,7 @@ begin
   end;
 end;
 
-//Actualiza la posición del mouse al moverse.
+//Actualiza la posición del mouse al moverse en la imagen.
 procedure TForm1.Image1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
 begin
   //Al mover el mouse, se indican las coordenadas X,Y y los valores RGB.
@@ -453,7 +555,7 @@ begin
   end;
 end;
 
-//Se activa al soltar el botón del mouse.
+//Se activa al soltar el botón del mouse en la imagen.
 procedure TForm1.Image1MouseUp(Sender: TObject; Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
 begin
@@ -604,6 +706,80 @@ begin
     BMAP.SaveToFile(SavePictureDialog1.FileName);
 end;
 
+procedure TForm1.MenuItem16Click(Sender: TObject);
+var
+  i,j     :  Integer;
+  k       :  Byte;
+  iMin,iMax   : Integer;
+  cMin,cMax   : Integer;
+  auxCoord:  integer;
+begin
+  //Si en X el punto final es menor al de inicio, se realiza el cambio.
+  if EndHist.X< StartHist.X then
+  begin
+    auxCoord := StartHist.X;
+    StartHist.X := EndHist.X;
+    EndHist.X := auxCoord;
+  end;
+  //Se determina el mínimo entre R, G y B.
+  cMin := min(min(Trunc(RChannel.YValue[Trunc(RChannel.GetXValue(StartHist.X))]), Trunc(GChannel.YValue[Trunc(GChannel.GetXValue(StartHist.X))])), Trunc(BChannel.YValue[Trunc(BChannel.GetXValue(StartHist.X))]));
+  Label1.Caption := 'Valor X: ' + IntToStr(cMin);
+  {PointIndex := Trunc(RChannel.GetXValue(X));
+    if PointIndex >= 0 then
+    begin
+      YValue := Trunc(RChannel.YValue[PointIndex]);
+      XValue := Trunc(RChannel.XValue[PointIndex]);
+      Label1.Caption := 'Valor X: ' + FloatToStr(X);
+    end;}
+  //Se determina el máximo entre R, G y B.
+  cMax := max(max(Trunc(RChannel.YValue[Trunc(RChannel.GetXValue(StartHist.X))]), Trunc(GChannel.YValue[Trunc(GChannel.GetXValue(StartHist.X))])), Trunc(BChannel.YValue[Trunc(BChannel.GetXValue(StartHist.X))]));
+  exchangeStartEnd();
+  for i:=StartPoint.Y to EndPoint.Y do
+  begin
+    for j:=StartPoint.X to EndPoint.X do
+    begin
+      //Se determina el mínimo entre R, G y B.
+      iMin := min(min(MAT[i,j,0], MAT[i,j,1]), MAT[i,j,2]);
+      //Se determina el máximo entre R, G y B.
+      iMax := max(max(MAT[i,j,0], MAT[i,j,1]), MAT[i,j,2]);
+      for k:=0 to 2 do
+        MAT[i,j,k] := Round(((cMax - cMin)/(iMax - iMin)) * (MAT[i,j,k] - iMin) + cMin);
+    end; //j
+  end; //i
+
+  //Se copia el resultado de la matriz al bitmap.
+  copMB(ALTO,ANCHO,MAT,BMAP);
+  //Visualizar el resultado en pantalla.
+  Image1.Picture.Assign(BMAP);
+  //Se actualiza el histograma de la imagen.
+  grafHist();
+end;
+
+//Selecciona toda la imagen.
+procedure TForm1.MenuItem18Click(Sender: TObject);
+begin
+  StartPoint := Point(0,0);
+  EndPoint := Point(ANCHO-1, ALTO-1);
+  //Desactiva la selección rectangular en la imagen.
+  imgSelectionEnabled := False;
+
+  //Limpia la última selección hecha.
+  copMB(ALTO,ANCHO,MAT,BMAP);
+  Image1.Picture.Assign(BMAP);
+
+  //Verifica que la imagen sea cuadrada para activar la binarización.
+  If abs(EndPoint.X-StartPoint.X) = abs(EndPoint.Y-StartPoint.Y) then
+    MenuItem11.Enabled := True
+  else
+    MenuItem11.Enabled := False;
+end;
+
+//Activa la selección rectangular en la imagen.
+procedure TForm1.MenuItem19Click(Sender: TObject);
+begin
+  imgSelectionEnabled := True;
+end;
+
 //Copiar el contenido de la imagen a una Matriz.
 procedure Tform1.copiaIM(al,an: Integer; var M:MATRGB);
 var
@@ -750,11 +926,11 @@ begin
   for i:=0 to 255 do
   begin
     //Se grafica Rojo para el valor i.
-    RChannel.AddXY(i, matHist[0,i]/nPixels*100);
+    RChannel.AddXY(i, matHist[0,i]{/nPixels*100});
     //Se grafica Verde para el valor i.
-    GChannel.AddXY(i, matHist[1,i]/nPixels*100);
+    GChannel.AddXY(i, matHist[1,i]{/nPixels*100});
     //Se grafica Azul para el valor i.
-    BChannel.AddXY(i, matHist[2,i]/nPixels*100);
+    BChannel.AddXY(i, matHist[2,i]{/nPixels*100});
   end;
 end;
 
