@@ -14,14 +14,17 @@ type
 
 
   { TForm1 }
-
-  MATRGB = Array of Array of Array of Byte;  //Matriz Tri-dimensional para almacenar contenido de imagen.
+  //Matriz Tri-dimensional para almacenar contenido de imagen.
+  MATRGB = Array of Array of Array of Byte;
+  //Matriz que guardará la frecuencia de cada valor entre 0 y 255 por canal.
+  matFrecRGB = Array[0..3] of Array[0..255] of Integer;
 
   TForm1 = class(TForm)
     Chart1: TChart;
     GChannel: TLineSeries;
     BChannel: TLineSeries;
     Label1: TLabel;
+    Label2: TLabel;
     MenuItem10: TMenuItem;
     MenuItem11: TMenuItem;
     MenuItem12: TMenuItem;
@@ -58,6 +61,7 @@ type
     procedure Image1MouseDown(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
     procedure Image1MouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure Image1MouseUp(Sender: TObject; Button: TMouseButton; Shift: TShiftState; X, Y: Integer);
+    procedure Label2Click(Sender: TObject);
     procedure MenuItem11Click(Sender: TObject);
     procedure MenuItem12Click(Sender: TObject);
     procedure MenuItem13Click(Sender: TObject);
@@ -113,6 +117,8 @@ var
   //Matrices de la imagen.
   MAT           : MATRGB;
   MATOrigin     : MATRGB;
+  //Matriz de frecuencias para el histograma.
+  matHist : matFrecRGB;
   //Objeto orientado a directivas/metodos para .BMP.
   BMAP          :Tbitmap;
 
@@ -417,7 +423,7 @@ procedure TForm1.Chart1MouseMove(Sender: TObject; Shift: TShiftState; X,Y: Integ
 begin
   if ((X >= 0) AND (X <= 255)) then
   begin
-    Label1.Caption := 'Valor X: ' + FloatToStr(X);
+    Label1.Caption := 'Valor X: ' + IntToStr(X);
     //Color y tamaño de la pluma.
     Chart1.Canvas.Pen.Color := RGBToColor(94, 246, 255);
     Chart1.Canvas.Pen.Width := 5;
@@ -456,6 +462,7 @@ begin
     end;
     //Se desactiva la bandera de selección.
     selectionFlagHist := False;
+    Label2.Caption := 'Rango seleccionado: ' + IntToStr(StartHist.X) + ' - ' + IntToStr(EndHist.X);
   end;
 
   //Los cambios de deselección se aplican al dejar de presionar el botón derecho.
@@ -593,6 +600,11 @@ begin
     MenuItem11.Enabled := False;
 end;
 
+procedure TForm1.Label2Click(Sender: TObject);
+begin
+
+end;
+
 //Procedimiento que pide parámetro r y aplica binarización dinámica.
 procedure TForm1.MenuItem11Click(Sender: TObject);
 var
@@ -647,14 +659,14 @@ begin
   end;
 end;
 
-//Aumentar contraste.
+//Aplica aumento de contraste usando Tanh.
 procedure TForm1.MenuItem13Click(Sender: TObject);
 var
   alpha : Float;
   i,j   : Integer;
   k     : Byte;
 begin
-  alpha := 3;
+  alpha := 0.01;
   //Abre ventana para seleccionar alpha.
   Form4.init();
   Form4.Showmodal;
@@ -663,16 +675,12 @@ begin
   begin
     alpha := Form4.FloatSpinEdit1.Value;
     exchangeStartEnd();
+
+    //Aplica el aumento de contraste a cada píxel.
     for i:=StartPoint.Y to EndPoint.Y do
-    begin
       for j:=StartPoint.X to EndPoint.X do
-      begin
         for k:=0 to 2 do
-        begin
           MAT[i,j,k]:= round((255/2) * (1 + tanh(alpha * (MAT[i,j,k] - (255/2)))));
-        end; //k
-      end; //j
-    end; //i
 
     //Se copia el resultado de la matriz al bitmap.
     copMB(ALTO,ANCHO,MAT,BMAP);
@@ -706,38 +714,50 @@ begin
     BMAP.SaveToFile(SavePictureDialog1.FileName);
 end;
 
+//Aplica reducción de contraste controlada mediante selección en histograma.
 procedure TForm1.MenuItem16Click(Sender: TObject);
 var
   i,j     :  Integer;
   k       :  Byte;
-  iMin,iMax   : Integer;
+  iMin,iMax   : Array[0..2] of Integer;
   cMin,cMax   : Integer;
+  auxCoord:  integer;
 begin
-  //Se determina el mínimo entre R, G y B.
-  cMin := min(min(Trunc(RChannel.YValue[Trunc(RChannel.GetXValue(StartHist.X))]), Trunc(GChannel.YValue[Trunc(GChannel.GetXValue(StartHist.X))])), Trunc(BChannel.YValue[Trunc(BChannel.GetXValue(StartHist.X))]));
-  Label1.Caption := 'Valor X: ' + IntToStr(cMin);
-  {PointIndex := Trunc(RChannel.GetXValue(X));
-    if PointIndex >= 0 then
-    begin
-      YValue := Trunc(RChannel.YValue[PointIndex]);
-      XValue := Trunc(RChannel.XValue[PointIndex]);
-      Label1.Caption := 'Valor X: ' + FloatToStr(X);
-    end;}
-  //Se determina el máximo entre R, G y B.
-  cMax := max(max(Trunc(RChannel.YValue[Trunc(RChannel.GetXValue(StartHist.X))]), Trunc(GChannel.YValue[Trunc(GChannel.GetXValue(StartHist.X))])), Trunc(BChannel.YValue[Trunc(BChannel.GetXValue(StartHist.X))]));
-  //exchangeStartEnd();
-  for i:=StartPoint.Y to EndPoint.Y do
+  //Si en el histograma, el punto final de selección es menor al de inicio, se realiza el cambio.
+  if EndHist.X< StartHist.X then
   begin
+    auxCoord := StartHist.X;
+    StartHist.X := EndHist.X;
+    EndHist.X := auxCoord;
+  end;
+  exchangeStartEnd();
+
+  //Se asignan las cotas mínima y máxima.
+  cMin := StartHist.X;
+  cMax := EndHist.X;
+
+  //Inicializa los valores mínimos y máximos por canal.
+  for k:=0 to 2 do
+  begin
+    iMin[k] := MAT[0, 0, k];
+    iMax[k] := MAT[0, 0, k];
+  end;
+  //Calcula el mínimo y máximo de cada canal.
+  for k:=0 to 2 do
+    for i:=StartPoint.Y to EndPoint.Y do
+      for j:=StartPoint.X to EndPoint.X do
+        begin
+          if MAT[i, j, k] < iMin[k] then
+            iMin[k] := MAT[i, j, k];
+          if MAT[i, j, k] > iMax[k] then
+            iMax[k] := MAT[i, j, k];
+        end;
+
+  //Aplica la contracción a cada píxel.
+  for i:=StartPoint.Y to EndPoint.Y do
     for j:=StartPoint.X to EndPoint.X do
-    begin
-      //Se determina el mínimo entre R, G y B.
-      iMin := min(min(MAT[i,j,0], MAT[i,j,1]), MAT[i,j,2]);
-      //Se determina el máximo entre R, G y B.
-      iMax := max(max(MAT[i,j,0], MAT[i,j,1]), MAT[i,j,2]);
       for k:=0 to 2 do
-        MAT[i,j,k] := Round(((cMax - cMin)/(iMax - iMin)) * (MAT[i,j,k] - iMin) + cMin);
-    end; //j
-  end; //i
+        MAT[i,j,k] := Round(((cMax - cMin)/(iMax[k] - iMin[k])) * (MAT[i,j,k] - iMin[k]) + cMin);
 
   //Se copia el resultado de la matriz al bitmap.
   copMB(ALTO,ANCHO,MAT,BMAP);
@@ -874,13 +894,9 @@ end;
 
 //Graficar histograma de la imagen.
 procedure tform1.grafHist();
-type
-  //Matriz que guardará la frecuencia de cada valor entre 0 y 255 por canal.
-  matFrecRGB = array[0..3] of array[0..255] of Integer;
 var
   i,j, nPixels :  Integer;
   k,val   :  Byte;
-  matHist : matFrecRGB;
 begin
   //Limpieza de series antes graficar.
   RChannel.clear;
@@ -918,11 +934,11 @@ begin
   for i:=0 to 255 do
   begin
     //Se grafica Rojo para el valor i.
-    RChannel.AddXY(i, matHist[0,i]{/nPixels*100});
+    RChannel.AddXY(i, matHist[0,i]/nPixels*100);
     //Se grafica Verde para el valor i.
-    GChannel.AddXY(i, matHist[1,i]{/nPixels*100});
+    GChannel.AddXY(i, matHist[1,i]/nPixels*100);
     //Se grafica Azul para el valor i.
-    BChannel.AddXY(i, matHist[2,i]{/nPixels*100});
+    BChannel.AddXY(i, matHist[2,i]/nPixels*100);
   end;
 end;
 

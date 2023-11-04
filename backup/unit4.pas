@@ -5,7 +5,8 @@ unit Unit4;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, Spin, Buttons;
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, Spin, Buttons,
+  StdCtrls;
 
 type
 
@@ -15,7 +16,9 @@ type
     BitBtn1: TBitBtn;
     BitBtn2: TBitBtn;
     FloatSpinEdit1: TFloatSpinEdit;
+    Label1: TLabel;
     procedure BitBtn1Click(Sender: TObject);
+    procedure Label1Click(Sender: TObject);
   private
 
   public
@@ -31,6 +34,11 @@ implementation
 {$R *.lfm}
 
 procedure TForm4.BitBtn1Click(Sender: TObject);
+begin
+
+end;
+
+procedure TForm4.Label1Click(Sender: TObject);
 begin
 
 end;
