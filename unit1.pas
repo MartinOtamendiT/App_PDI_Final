@@ -35,6 +35,8 @@ type
     MenuItem17: TMenuItem;
     MenuItem18: TMenuItem;
     MenuItem19: TMenuItem;
+    MenuItem20: TMenuItem;
+    MenuItem21: TMenuItem;
     RChannel: TLineSeries;
     Image1: TImage;
     MainMenu1: TMainMenu;
@@ -70,6 +72,7 @@ type
     procedure MenuItem16Click(Sender: TObject);
     procedure MenuItem18Click(Sender: TObject);
     procedure MenuItem19Click(Sender: TObject);
+    procedure MenuItem20Click(Sender: TObject);
     procedure MenuItem2Click(Sender: TObject);
     procedure MenuItem3Click(Sender: TObject);
     procedure MenuItem4Click(Sender: TObject);
@@ -791,6 +794,37 @@ end;
 procedure TForm1.MenuItem19Click(Sender: TObject);
 begin
   imgSelectionEnabled := True;
+end;
+
+//Rota la imagen a 90°.
+procedure TForm1.MenuItem20Click(Sender: TObject);
+var
+  MAT_Trans : MATRGB;
+  i,j   : Integer;
+  k     : Byte;
+begin
+  ALTO := BMAP.Width;
+  ANCHO := BMAP.Height;
+  BMAP.Height := ALTO;
+  BMAP.Width := ANCHO;
+
+  SetLength(MAT_Trans,ALTO,ANCHO,3);
+  // Calcula la matriz transpuesta
+  for i:=0 to ALTO-1 do
+    for j:=0 to ANCHO-1 do
+      for k:=0 to 2 do
+        MAT_Trans[i,j,k] := MAT[j,i,k];
+
+  SetLength(MAT,ALTO,ANCHO,3);
+  copMtoM(ALTO,ANCHO,MAT_Trans,MAT);
+
+  //Se copia el resultado de la matriz al bitmap.
+  copMB(ALTO,ANCHO,MAT_Trans,BMAP);
+  //copBM(ALTO, ANCHO, MAT_Trans, BMAP);
+  //Visualizar el resultado en pantalla.
+  Image1.Picture.Assign(BMAP);
+  //Se actualiza el histograma de la imagen.
+  //grafHist();
 end;
 
 //Copiar el contenido de la imagen a una Matriz.
