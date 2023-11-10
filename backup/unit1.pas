@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, Menus, Unit2,
   Unit3, Unit4, ExtDlgs, LCLIntf, ComCtrls, StdCtrls, TAGraph, TASeries, math,
-  TADrawUtils, TACustomSeries;
+  TADrawUtils, TACustomSeries, LazLogger;
 
 type
 
@@ -35,8 +35,10 @@ type
     MenuItem17: TMenuItem;
     MenuItem18: TMenuItem;
     MenuItem19: TMenuItem;
-    MenuItem20: TMenuItem;
-    MenuItem21: TMenuItem;
+    MenuItem22: TMenuItem;
+    MenuItem23: TMenuItem;
+    MenuItem24: TMenuItem;
+    MenuItem25: TMenuItem;
     RChannel: TLineSeries;
     Image1: TImage;
     MainMenu1: TMainMenu;
@@ -72,7 +74,9 @@ type
     procedure MenuItem16Click(Sender: TObject);
     procedure MenuItem18Click(Sender: TObject);
     procedure MenuItem19Click(Sender: TObject);
-    procedure MenuItem20Click(Sender: TObject);
+    procedure MenuItem23Click(Sender: TObject);
+    procedure MenuItem24Click(Sender: TObject);
+    procedure MenuItem25Click(Sender: TObject);
     procedure MenuItem2Click(Sender: TObject);
     procedure MenuItem3Click(Sender: TObject);
     procedure MenuItem4Click(Sender: TObject);
@@ -102,6 +106,8 @@ type
     procedure toGray();
     //Aplica binarización dinámica a la imagen.
     procedure binarizar(r: Integer);
+    //Rota la imagen 90° o -90°.
+    procedure rotarImagen(direction: Boolean);
 
   end;
 
@@ -117,6 +123,7 @@ var
   selectionFlagHist: Boolean;
   //Dimensiones de la imagen.
   ALTO, ANCHO   : Integer;
+  ALTO_origin, ANCHO_origin : Integer;
   //Matrices de la imagen.
   MAT           : MATRGB;
   MATOrigin     : MATRGB;
@@ -214,6 +221,9 @@ begin
     BMAP.LoadFromFile(OpenPictureDialog1.FileName);
     ALTO := BMAP.Height;
     ANCHO := BMAP.Width;
+    //Realiza una copia de las dimensiones originales para restauración.
+    ALTO_origin := BMAP.Height;
+    ANCHO_origin := BMAP.Width;
 
     //Se garantizan los 8 bits por canal.
     if BMAP.PixelFormat<> pf24bit then
@@ -698,6 +708,12 @@ end;
 //Restaurar imagen a su estado original.
 procedure TForm1.MenuItem14Click(Sender: TObject);
 begin
+  //Se asegura de restaurar las dimensiones originales de la matriz y el bitmap.
+  ALTO := ALTO_origin;
+  ANCHO := ANCHO_origin;
+  BMAP.Height := ALTO;
+  BMAP.Width := ANCHO;
+  SetLength(MAT,ALTO,ANCHO,3);
   //Copia el contenido de la matriz con el edo. original a la matriz de imagen.
   copMtoM(ALTO, ANCHO, MATOrigin, MAT);
   //Se copia el resultado de la matriz al bitmap.
@@ -796,35 +812,40 @@ begin
   imgSelectionEnabled := True;
 end;
 
-//Rota la imagen a 90°.
-procedure TForm1.MenuItem20Click(Sender: TObject);
+procedure TForm1.MenuItem23Click(Sender: TObject);
+begin
+  rotarImagen(true);
+end;
+
+procedure TForm1.MenuItem24Click(Sender: TObject);
+begin
+  rotarImagen(false);
+end;
+
+procedure TForm1.MenuItem25Click(Sender: TObject);
 var
-  MAT_Trans : MATRGB;
+  reflectedMAT : MATRGB;
+  midALTO, midANCHO : Integer;
   i,j   : Integer;
   k     : Byte;
 begin
-  ALTO := BMAP.Width;
-  ANCHO := BMAP.Height;
-  BMAP.Height := ALTO;
-  BMAP.Width := ANCHO;
+  midALTO := trunc(ALTO/2);
+  midANCHO := trunc(ANCHO/2);
 
-  SetLength(MAT_Trans,ALTO,ANCHO,3);
-  // Calcula la matriz transpuesta
+  SetLength(reflectedMAT,ALTO,ANCHO,3);
   for i:=0 to ALTO-1 do
-    for j:=0 to ANCHO-1 do
+    for j:=0 to midANCHO-1 do
       for k:=0 to 2 do
-        MAT_Trans[i,j,k] := MAT[j,i,k];
-
-  SetLength(MAT,ALTO,ANCHO,3);
-  copMtoM(ALTO,ANCHO,MAT_Trans,MAT);
+        reflectedMAT[i,j,k] := MAT[i,ALTO-j-1,k]; //reflexión
+  //Copia la matriz reflejada a la matriz de la imagen.
+  copMtoM(ALTO,ANCHO,reflectedMAT,MAT);
 
   //Se copia el resultado de la matriz al bitmap.
-  copMB(ALTO,ANCHO,MAT_Trans,BMAP);
-  //copBM(ALTO, ANCHO, MAT_Trans, BMAP);
+  copMB(ALTO,ANCHO,reflectedMAT,BMAP);
   //Visualizar el resultado en pantalla.
-  //Image1.Picture.Assign(BMAP);
+  Image1.Picture.Assign(BMAP);
   //Se actualiza el histograma de la imagen.
-  //grafHist();
+  grafHist();
 end;
 
 //Copiar el contenido de la imagen a una Matriz.
@@ -1188,6 +1209,52 @@ begin
   Image1.Picture.Assign(BMAP);
   //Se actualiza el histograma de la imagen.
   grafHist();
+end;
+
+//Rota la imagen 90° o -90°.
+procedure tform1.rotarImagen(direction: Boolean);
+var
+  rotatedMAT : MATRGB;
+  newANCHO, newALTO : Integer;
+  i,j   : Integer;
+  k     : Byte;
+begin
+  //Define las dimensiones de la nueva imagen.
+  newANCHO := ALTO;
+  newALTO := ANCHO;
+  SetLength(rotatedMAT,newALTO,newANCHO,3);
+
+  //Se realiza la rotación de la imagen a 90°.
+  If direction = true then
+    for i:=0 to newALTO-1 do
+      for j:=0 to newANCHO-1 do
+        for k:=0 to 2 do
+          rotatedMAT[i,j,k] := MAT[j,newALTO-i-1,k]
+  //Se realiza la rotación de la imagen a -90°.
+  else
+    for i:=0 to newALTO-1 do
+      for j:=0 to newANCHO-1 do
+        for k:=0 to 2 do
+          rotatedMAT[i,j,k] := MAT[newANCHO-j-1,i,k];
+
+  //Actualiza altos y anchos globales de la imagen y del bitmap.
+  ALTO := newALTO;
+  ANCHO := newANCHO;
+  BMAP.Height := newALTO;
+  BMAP.Width := newANCHO;
+
+  //Actualiza y establece la selección para toda la imagen por defecto.
+  StartPoint := Point(0,0);
+  EndPoint := Point(ANCHO-1, ALTO-1);
+
+  //Copia la matriz rotada a la matriz de la imagen.
+  SetLength(MAT,ALTO,ANCHO,3);
+  copMtoM(ALTO,ANCHO,rotatedMAT,MAT);
+
+  //Se copia el resultado de la matriz al bitmap.
+  copMB(newALTO,newANCHO,rotatedMAT,BMAP);
+  //Visualizar el resultado en pantalla.
+  Image1.Picture.Assign(BMAP);
 end;
 
 end.

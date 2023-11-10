@@ -264,12 +264,20 @@ object Form1: TForm1
         Caption = 'Reducir contraste'
         OnClick = MenuItem16Click
       end
-      object MenuItem20: TMenuItem
-        Caption = 'Rotar imagen 90°'
-        OnClick = MenuItem20Click
+    end
+    object MenuItem22: TMenuItem
+      Caption = 'Imagen'
+      object MenuItem23: TMenuItem
+        Caption = 'Girar 90° a la derecha'
+        OnClick = MenuItem23Click
       end
-      object MenuItem21: TMenuItem
+      object MenuItem24: TMenuItem
+        Caption = 'Girar 90° a la izquierda'
+        OnClick = MenuItem24Click
+      end
+      object MenuItem25: TMenuItem
         Caption = 'Reflejar imagen'
+        OnClick = MenuItem25Click
       end
     end
   end
