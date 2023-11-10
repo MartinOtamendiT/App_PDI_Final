@@ -825,23 +825,24 @@ end;
 procedure TForm1.MenuItem25Click(Sender: TObject);
 var
   reflectedMAT : MATRGB;
-  midALTO, midANCHO : Integer;
+  midANCHO : Integer;
   i,j   : Integer;
   k     : Byte;
 begin
-  midALTO := trunc(ALTO/2);
+  //Obtiene la mitad del ancho de la imagen.
   midANCHO := trunc(ANCHO/2);
-
   SetLength(reflectedMAT,ALTO,ANCHO,3);
+  //Refleja la mitad izquierda de la imagen.
   for i:=0 to ALTO-1 do
     for j:=0 to midANCHO-1 do
       for k:=0 to 2 do
-        reflectedMAT[i,j,k] := MAT[i,ALTO-j-1,k];
-
+        reflectedMAT[i,j,k] := MAT[i,midANCHO-j-1,k];
+  //Refleja la mitad derecha de la imagen.
   for i:=0 to ALTO-1 do
-    for j:=midANCHO to ANCHO-1 do
+    for j:=0 to ANCHO-midANCHO-1 do
       for k:=0 to 2 do
-        reflectedMAT[i,j,k] := MAT[i,ALTO-j-1,k]; //reflexión
+        reflectedMAT[i,midANCHO+j,k] := MAT[i,ANCHO-j-1,k];
+
   //Copia la matriz reflejada a la matriz de la imagen.
   copMtoM(ALTO,ANCHO,reflectedMAT,MAT);
 
@@ -849,8 +850,6 @@ begin
   copMB(ALTO,ANCHO,reflectedMAT,BMAP);
   //Visualizar el resultado en pantalla.
   Image1.Picture.Assign(BMAP);
-  //Se actualiza el histograma de la imagen.
-  grafHist();
 end;
 
 //Copiar el contenido de la imagen a una Matriz.

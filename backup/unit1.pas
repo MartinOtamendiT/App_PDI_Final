@@ -836,7 +836,13 @@ begin
   for i:=0 to ALTO-1 do
     for j:=0 to midANCHO-1 do
       for k:=0 to 2 do
-        reflectedMAT[i,j,k] := MAT[i,ALTO-j-1,k]; //reflexión
+        reflectedMAT[i,j,k] := MAT[i,midANCHO-j-1,k];
+
+  for i:=0 to ALTO-1 do
+    for j:=0 to ANCHO-midANCHO-1 do
+      for k:=0 to 2 do
+        reflectedMAT[i,midANCHO+j,k] := MAT[i,ANCHO-j-1,k];
+
   //Copia la matriz reflejada a la matriz de la imagen.
   copMtoM(ALTO,ANCHO,reflectedMAT,MAT);
 
