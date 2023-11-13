@@ -35,10 +35,13 @@ type
     MenuItem17: TMenuItem;
     MenuItem18: TMenuItem;
     MenuItem19: TMenuItem;
+    MenuItem20: TMenuItem;
+    MenuItem21: TMenuItem;
     MenuItem22: TMenuItem;
     MenuItem23: TMenuItem;
     MenuItem24: TMenuItem;
     MenuItem25: TMenuItem;
+    MenuItem26: TMenuItem;
     RChannel: TLineSeries;
     Image1: TImage;
     MainMenu1: TMainMenu;
@@ -74,9 +77,12 @@ type
     procedure MenuItem16Click(Sender: TObject);
     procedure MenuItem18Click(Sender: TObject);
     procedure MenuItem19Click(Sender: TObject);
+    procedure MenuItem20Click(Sender: TObject);
+    procedure MenuItem21Click(Sender: TObject);
     procedure MenuItem23Click(Sender: TObject);
     procedure MenuItem24Click(Sender: TObject);
     procedure MenuItem25Click(Sender: TObject);
+    procedure MenuItem26Click(Sender: TObject);
     procedure MenuItem2Click(Sender: TObject);
     procedure MenuItem3Click(Sender: TObject);
     procedure MenuItem4Click(Sender: TObject);
@@ -812,32 +818,93 @@ begin
   imgSelectionEnabled := True;
 end;
 
+//Realiza operación de LBP.
+procedure TForm1.MenuItem20Click(Sender: TObject);
+begin
+
+end;
+
+//Aplica LBP por píxel pívote.
+procedure TForm1.MenuItem21Click(Sender: TObject);
+var
+  LBPMAT : MATRGB;
+  neighborPixels : Array[0..7] of Byte;
+  i,j:  Integer;
+  k,lbp: Byte;
+begin
+  //Conversión a escala de grises.
+  toGray();
+  //Copia el contenido de la matriz original a la copia LBP.
+  SetLength(LBPMAT,ALTO,ANCHO,3);
+  copMtoM(ALTO, ANCHO, MAT, LBPMAT);
+
+  //Recorre toda la zona a excepción del margen.
+  for i:=StartPoint.Y+1 to EndPoint.Y-1 do
+  begin
+    for j:=StartPoint.X+1 to EndPoint.X-1 do
+    begin
+      //Obtiene los valores de los 8 píxeles que rodean al píxel pívote.
+      neighborPixels[0] := MAT[i-1,j-1,0];
+      neighborPixels[1] := MAT[i-1,j,0];
+      neighborPixels[2] := MAT[i-1,j+1,0];
+      neighborPixels[3] := MAT[i,j+1,0];
+      neighborPixels[4] := MAT[i+1,j+1,0];
+      neighborPixels[5] := MAT[i+1,j,0];
+      neighborPixels[6] := MAT[i+1,j-1,0];
+      neighborPixels[7] := MAT[i,j-1,0];
+
+      //Cálculo del valor LBP para el píxel pívote.
+      lbp := 0;
+      for k:=0 to 7 do
+        if neighborPixels[k] >= MAT[i,j,0] then
+          lbp := lbp + trunc(power(2,k));
+
+      //Guarda el valor LBP en la matriz de LBP para todos los canales.
+      LBPMAT[i,j,0] := lbp;
+      LBPMAT[i,j,1] := lbp;
+      LBPMAT[i,j,2] := lbp;
+    end; //j
+  end; //i
+
+  //Se copia el resultado en la matriz de la imagen.
+  copMtoM(ALTO, ANCHO, LBPMAT, MAT);
+  //Se copia el resultado de la matriz al bitmap.
+  copMB(ALTO,ANCHO,MAT,BMAP);
+  //Visualizar el resultado en pantalla.
+  Image1.Picture.Assign(BMAP);
+  //Se actualiza el histograma de la imagen.
+  grafHist();
+end;
+
+//Manda a llamar al método de rotación a la derecha (90°).
 procedure TForm1.MenuItem23Click(Sender: TObject);
 begin
   rotarImagen(true);
 end;
 
+//Manda a llamar al método de rotación a la izquierda (-90°).
 procedure TForm1.MenuItem24Click(Sender: TObject);
 begin
   rotarImagen(false);
 end;
 
+//Realiza operación de reflexión en X por cada mitad de la imagen.
 procedure TForm1.MenuItem25Click(Sender: TObject);
 var
   reflectedMAT : MATRGB;
-  midALTO, midANCHO : Integer;
+  midANCHO : Integer;
   i,j   : Integer;
   k     : Byte;
 begin
-  midALTO := trunc(ALTO/2);
+  //Obtiene la mitad del ancho de la imagen.
   midANCHO := trunc(ANCHO/2);
-
   SetLength(reflectedMAT,ALTO,ANCHO,3);
+  //Refleja la mitad izquierda de la imagen.
   for i:=0 to ALTO-1 do
     for j:=0 to midANCHO-1 do
       for k:=0 to 2 do
         reflectedMAT[i,j,k] := MAT[i,midANCHO-j-1,k];
-
+  //Refleja la mitad derecha de la imagen.
   for i:=0 to ALTO-1 do
     for j:=0 to ANCHO-midANCHO-1 do
       for k:=0 to 2 do
@@ -848,6 +915,68 @@ begin
 
   //Se copia el resultado de la matriz al bitmap.
   copMB(ALTO,ANCHO,reflectedMAT,BMAP);
+  //Visualizar el resultado en pantalla.
+  Image1.Picture.Assign(BMAP);
+end;
+
+//Aplica LBP por desviación estándar.
+procedure TForm1.MenuItem26Click(Sender: TObject);
+var
+  LBPMAT : MATRGB;
+  neighborPixels : Array[0..7] of Double;
+  i,j:  Integer;
+  k,lbp: Byte;
+  mean1, stdev,SumaCuadrados : Double;
+begin
+  //Conversión a escala de grises.
+  toGray();
+  //Copia el contenido de la matriz original a la copia LBP.
+  SetLength(LBPMAT,ALTO,ANCHO,3);
+  copMtoM(ALTO, ANCHO, MAT, LBPMAT);
+
+  //Recorre toda la zona a excepción del margen.
+  for i:=StartPoint.Y+1 to EndPoint.Y-1 do
+  begin
+    for j:=StartPoint.X to EndPoint.X-1 do
+    begin
+      //Obtiene los valores de los 8 píxeles que rodean al píxel pívote.
+      neighborPixels[0] := MAT[i-1,j-1,0];
+      neighborPixels[1] := MAT[i-1,j,0];
+      neighborPixels[2] := MAT[i-1,j+1,0];
+      neighborPixels[3] := MAT[i,j+1,0];
+      neighborPixels[4] := MAT[i+1,j+1,0];
+      neighborPixels[5] := MAT[i+1,j,0];
+      neighborPixels[6] := MAT[i+1,j-1,0];
+      neighborPixels[7] := MAT[i,j-1,0];
+
+      mean1 := Mean(neighborPixels);
+      {mean1 :=0;
+      for k:=0 to 7 do
+        mean1 := mean1 + neighborPixels[k];
+      mean1 := mean1/8;}
+      {SumaCuadrados := 0;
+      for k:=0 to 7 do
+        SumaCuadrados := SumaCuadrados + power(neighborPixels[k] - mean1,2);}
+
+      stdev := StdDev(neighborPixels);
+
+      //Cálculo del valor LBP para el píxel pívote.
+      lbp := 0;
+      for k:=0 to 7 do
+        if neighborPixels[k] >= stdev then
+          lbp := lbp + trunc(power(2,k));
+
+      //Guarda el valor LBP en la matriz de LBP para todos los canales.
+      LBPMAT[i,j,0] := lbp;
+      LBPMAT[i,j,1] := lbp;
+      LBPMAT[i,j,2] := lbp;
+    end; //j
+  end; //i
+
+  //Se copia el resultado en la matriz de la imagen.
+  copMtoM(ALTO, ANCHO, LBPMAT, MAT);
+  //Se copia el resultado de la matriz al bitmap.
+  copMB(ALTO,ANCHO,MAT,BMAP);
   //Visualizar el resultado en pantalla.
   Image1.Picture.Assign(BMAP);
   //Se actualiza el histograma de la imagen.

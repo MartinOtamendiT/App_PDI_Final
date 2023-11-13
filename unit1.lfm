@@ -264,6 +264,18 @@ object Form1: TForm1
         Caption = 'Reducir contraste'
         OnClick = MenuItem16Click
       end
+      object MenuItem20: TMenuItem
+        Caption = 'Local Binary Patterns'
+        OnClick = MenuItem20Click
+        object MenuItem21: TMenuItem
+          Caption = 'Por píxel pívote'
+          OnClick = MenuItem21Click
+        end
+        object MenuItem26: TMenuItem
+          Caption = 'Por StdDev'
+          OnClick = MenuItem26Click
+        end
+      end
     end
     object MenuItem22: TMenuItem
       Caption = 'Imagen'
