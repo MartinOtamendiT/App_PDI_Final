@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, Menus, Unit2,
-  Unit3, Unit4, ExtDlgs, LCLIntf, ComCtrls, StdCtrls, TAGraph, TASeries, math,
+  Unit3, Unit4, Unit5, ExtDlgs, LCLIntf, ComCtrls, StdCtrls, TAGraph, TASeries, math,
   TADrawUtils, TACustomSeries, LazLogger;
 
 type
@@ -115,8 +115,8 @@ type
     procedure binarizar(r: Integer);
     //Rota la imagen 90° o -90°.
     procedure rotarImagen(direction: Boolean);
-    //Permite que el usuario seleccione 4 colores
-
+    //Permite que el usuario seleccione 4 colores y calcula la paleta correspondiente con interpolación lineal.
+    procedure generarPaletaColores();
   end;
 
 //Variables globales.
@@ -139,6 +139,8 @@ var
   matHist : matFrecRGB;
   //Objeto orientado a directivas/metodos para .BMP.
   BMAP          :Tbitmap;
+  //Matriz de colores calculados con interpolación lineal.
+  paleta: Array[0..255] of Array[0..2] of Byte;
 
 implementation
 
@@ -826,17 +828,15 @@ begin
 
 end;
 
-//Aplica LBP por píxel pívote.
-procedure TForm1.MenuItem21Click(Sender: TObject);
+//Permite que el usuario seleccione 4 colores y calcula la paleta correspondiente con interpolación lineal.
+procedure TForm1.generarPaletaColores();
 var
-  LBPMAT : MATRGB;
-  neighborPixels : Array[0..7] of Byte;
   i,j:  Integer;
-  k,lbp: Byte;
+  k : Byte;
   colors: Array[0..3] of Array[0..2] of Byte;
-  paleta: Array[0..255] of Array[0..2] of Byte;
   c: Tcolor;
 begin
+  //Pide los 4 colores al usuario y los guarda en un arreglo.
   for k:=0 to 3 do
   begin
     If ColorDialog1.Execute then
@@ -847,24 +847,39 @@ begin
       colors[k,2] := GetBValue(c);
     end;
   end;
+  //Calcula la paleta de colores mediante interpolación lineal.
   for j:=0 to 2 do
   begin
+    //De un color a otro se generan 85 colores.
     for i:=85*j to 85*(j+1)-1 do
-    begin
       for k:=0 to 2 do
         paleta[i,k] := Round(colors[j,k] + (i/255)*(colors[j+1,k] - colors[j,k]));
-    end;
   end;
-  //Asignar últmo color a paleta.
+  //Asigna el último color al último valor de la paleta.
   paleta[255,0] := colors[3,0];
   paleta[255,1] := colors[3,1];
   paleta[255,2] := colors[3,2];
+end;
 
+//Aplica LBP por píxel pívote.
+procedure TForm1.MenuItem21Click(Sender: TObject);
+var
+  LBPMAT : MATRGB;
+  LBPMATCOLOR : MATRGB;
+  neighborPixels : Array[0..7] of Integer;
+  i,j:  Integer;
+  k,lbp: Byte;
+  maximo: Integer;
+begin
+  //Calcula paleta de colores.
+  generarPaletaColores();
   //Conversión a escala de grises.
   toGray();
-  //Copia el contenido de la matriz original a la copia LBP.
+  //Copia el contenido de la matriz original a las copias LBP.
   SetLength(LBPMAT,ALTO,ANCHO,3);
   copMtoM(ALTO, ANCHO, MAT, LBPMAT);
+  SetLength(LBPMATCOLOR,ALTO,ANCHO,3);
+  copMtoM(ALTO, ANCHO, MAT, LBPMATCOLOR);
 
   //Recorre toda la zona a excepción del margen.
   for i:=StartPoint.Y+1 to EndPoint.Y-1 do
@@ -881,16 +896,23 @@ begin
       neighborPixels[6] := MAT[i+1,j-1,0];
       neighborPixels[7] := MAT[i,j-1,0];
 
+      //Calcula la desviación estándar de los píxeles vecinos.
+      maximo := MaxValue(neighborPixels);
+
       //Cálculo del valor LBP para el píxel pívote.
       lbp := 0;
       for k:=0 to 7 do
-        if neighborPixels[k] >= MAT[i,j,0] then
+        if neighborPixels[k] >= maximo then
           lbp := lbp + trunc(power(2,k));
 
       //Guarda el valor LBP en la matriz de LBP para todos los canales.
-      LBPMAT[i,j,0] := paleta[lbp,0];
+      LBPMAT[i,j,0] := lbp;
       LBPMAT[i,j,1] := lbp;
       LBPMAT[i,j,2] := lbp;
+      //Se mapea el valor LBP respecto a un color dentro de la paleta y es guardado en otra matriz.
+      LBPMATCOLOR[i,j,0] := paleta[lbp,0];
+      LBPMATCOLOR[i,j,1] := paleta[lbp,1];
+      LBPMATCOLOR[i,j,2] := paleta[lbp,2];
     end; //j
   end; //i
 
@@ -902,6 +924,12 @@ begin
   Image1.Picture.Assign(BMAP);
   //Se actualiza el histograma de la imagen.
   grafHist();
+
+  //Se manda el resultado del LBP con color a una nueva ventana.
+  copMB(ALTO,ANCHO,LBPMATCOLOR,BMAP);
+  Form5.Image1.Picture.Assign(BMAP);
+  copMB(ALTO,ANCHO,MAT,BMAP);
+  Form5.ShowModal;
 end;
 
 //Manda a llamar al método de rotación a la derecha (90°).
@@ -951,16 +979,21 @@ end;
 procedure TForm1.MenuItem26Click(Sender: TObject);
 var
   LBPMAT : MATRGB;
+  LBPMATCOLOR : MATRGB;
   neighborPixels : Array[0..7] of Double;
   i,j:  Integer;
   k,lbp: Byte;
   stdev: Double;
 begin
+  //Calcula paleta de colores.
+  generarPaletaColores();
   //Conversión a escala de grises.
   toGray();
-  //Copia el contenido de la matriz original a la copia LBP.
+  //Copia el contenido de la matriz original a las copias LBP.
   SetLength(LBPMAT,ALTO,ANCHO,3);
   copMtoM(ALTO, ANCHO, MAT, LBPMAT);
+  SetLength(LBPMATCOLOR,ALTO,ANCHO,3);
+  copMtoM(ALTO, ANCHO, MAT, LBPMATCOLOR);
 
   //Recorre toda la zona a excepción del margen.
   for i:=StartPoint.Y+1 to EndPoint.Y-1 do
@@ -990,6 +1023,10 @@ begin
       LBPMAT[i,j,0] := lbp;
       LBPMAT[i,j,1] := lbp;
       LBPMAT[i,j,2] := lbp;
+      //Se mapea el valor LBP respecto a un color dentro de la paleta y es guardado en otra matriz.
+      LBPMATCOLOR[i,j,0] := paleta[lbp,0];
+      LBPMATCOLOR[i,j,1] := paleta[lbp,1];
+      LBPMATCOLOR[i,j,2] := paleta[lbp,2];
     end; //j
   end; //i
 
@@ -1001,6 +1038,12 @@ begin
   Image1.Picture.Assign(BMAP);
   //Se actualiza el histograma de la imagen.
   grafHist();
+
+  //Se manda el resultado del LBP con color a una nueva ventana.
+  copMB(ALTO,ANCHO,LBPMATCOLOR,BMAP);
+  Form5.Image1.Picture.Assign(BMAP);
+  copMB(ALTO,ANCHO,MAT,BMAP);
+  Form5.ShowModal;
 end;
 
 //Copiar el contenido de la imagen a una Matriz.

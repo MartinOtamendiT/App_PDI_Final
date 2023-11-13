@@ -1,15 +1,15 @@
 object Form1: TForm1
-  Left = 238
+  Left = 304
   Height = 606
   Top = 58
-  Width = 971
+  Width = 933
   HorzScrollBar.Page = 920
   HorzScrollBar.Range = 920
   VertScrollBar.Page = 545
   VertScrollBar.Range = 545
   Caption = 'Form1'
   ClientHeight = 586
-  ClientWidth = 971
+  ClientWidth = 933
   Menu = MainMenu1
   OnCreate = FormCreate
   LCLVersion = '2.0.12.0'
@@ -41,7 +41,7 @@ object Form1: TForm1
     Left = 0
     Height = 23
     Top = 563
-    Width = 971
+    Width = 933
     Panels = <    
       item
         Text = 'X,Y'
@@ -268,7 +268,7 @@ object Form1: TForm1
         Caption = 'Local Binary Patterns'
         OnClick = MenuItem20Click
         object MenuItem21: TMenuItem
-          Caption = 'Por píxel pívote'
+          Caption = 'Por Máximo'
           OnClick = MenuItem21Click
         end
         object MenuItem26: TMenuItem
