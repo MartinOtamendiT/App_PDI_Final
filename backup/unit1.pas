@@ -21,6 +21,7 @@ type
 
   TForm1 = class(TForm)
     Chart1: TChart;
+    ColorDialog1: TColorDialog;
     GChannel: TLineSeries;
     BChannel: TLineSeries;
     Label1: TLabel;
@@ -114,6 +115,7 @@ type
     procedure binarizar(r: Integer);
     //Rota la imagen 90° o -90°.
     procedure rotarImagen(direction: Boolean);
+    //Permite que el usuario seleccione 4 colores
 
   end;
 
@@ -831,7 +833,33 @@ var
   neighborPixels : Array[0..7] of Byte;
   i,j:  Integer;
   k,lbp: Byte;
+  colors: Array[0..3] of Array[0..2] of Byte;
+  paleta: Array[0..255] of Array[0..2] of Byte;
+  c: Tcolor;
 begin
+  for k:=0 to 3 do
+  begin
+    If ColorDialog1.Execute then
+    begin
+      c := ColorDialog1.Color;
+      colors[k,0] := GetRValue(c);
+      colors[k,1] := GetGValue(c);
+      colors[k,2] := GetBValue(c);
+    end;
+  end;
+  for j:=0 to 2 do
+  begin
+    for i:=85*j to 85*(j+1)-1 do
+    begin
+      for k:=0 to 2 do
+        paleta[i,k] := Round(colors[j,k] + (i/255)*(colors[j+1,k] - colors[j,k]));
+    end;
+  end;
+  //Asignar últmo color a paleta.
+  paleta[255,0] := colors[3,0];
+  paleta[255,1] := colors[3,1];
+  paleta[255,2] := colors[3,2];
+
   //Conversión a escala de grises.
   toGray();
   //Copia el contenido de la matriz original a la copia LBP.
@@ -860,7 +888,7 @@ begin
           lbp := lbp + trunc(power(2,k));
 
       //Guarda el valor LBP en la matriz de LBP para todos los canales.
-      LBPMAT[i,j,0] := lbp;
+      LBPMAT[i,j,0] := paleta[lbp,0];
       LBPMAT[i,j,1] := lbp;
       LBPMAT[i,j,2] := lbp;
     end; //j
@@ -926,7 +954,7 @@ var
   neighborPixels : Array[0..7] of Double;
   i,j:  Integer;
   k,lbp: Byte;
-  mean1, stdev,SumaCuadrados : Double;
+  stdev: Double;
 begin
   //Conversión a escala de grises.
   toGray();
@@ -937,7 +965,7 @@ begin
   //Recorre toda la zona a excepción del margen.
   for i:=StartPoint.Y+1 to EndPoint.Y-1 do
   begin
-    for j:=StartPoint.X to EndPoint.X-1 do
+    for j:=StartPoint.X+1 to EndPoint.X-1 do
     begin
       //Obtiene los valores de los 8 píxeles que rodean al píxel pívote.
       neighborPixels[0] := MAT[i-1,j-1,0];
@@ -949,15 +977,7 @@ begin
       neighborPixels[6] := MAT[i+1,j-1,0];
       neighborPixels[7] := MAT[i,j-1,0];
 
-      mean1 := Mean(neighborPixels);
-      {mean1 :=0;
-      for k:=0 to 7 do
-        mean1 := mean1 + neighborPixels[k];
-      mean1 := mean1/8;}
-      {SumaCuadrados := 0;
-      for k:=0 to 7 do
-        SumaCuadrados := SumaCuadrados + power(neighborPixels[k] - mean1,2);}
-
+      //Calcula la desviación estándar de los píxeles vecinos.
       stdev := StdDev(neighborPixels);
 
       //Cálculo del valor LBP para el píxel pívote.

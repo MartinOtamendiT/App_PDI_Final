@@ -21,6 +21,7 @@ type
 
   TForm1 = class(TForm)
     Chart1: TChart;
+    ColorDialog1: TColorDialog;
     GChannel: TLineSeries;
     BChannel: TLineSeries;
     Label1: TLabel;
@@ -114,6 +115,7 @@ type
     procedure binarizar(r: Integer);
     //Rota la imagen 90° o -90°.
     procedure rotarImagen(direction: Boolean);
+    //Permite que el usuario seleccione 4 colores
 
   end;
 
@@ -831,7 +833,33 @@ var
   neighborPixels : Array[0..7] of Byte;
   i,j:  Integer;
   k,lbp: Byte;
+  colors: Array[0..3] of Array[0..2] of Byte;
+  paleta: Array[0..255] of Array[0..2] of Byte;
+  c: Tcolor;
 begin
+  for k:=0 to 3 do
+  begin
+    If ColorDialog1.Execute then
+    begin
+      c := ColorDialog1.Color;
+      colors[k,0] := GetRValue(c);
+      colors[k,1] := GetGValue(c);
+      colors[k,2] := GetBValue(c);
+    end;
+  end;
+  for j:=0 to 2 do
+  begin
+    for i:=85*j to 85*(j+1)-1 do
+    begin
+      for k:=0 to 2 do
+        paleta[i,k] := Round(colors[j,k] + (i/255)*(colors[j+1,k] - colors[j,k]));
+    end;
+  end;
+  //Asignar últmo color a paleta.
+  paleta[255,0] := colors[3,0];
+  paleta[255,1] := colors[3,1];
+  paleta[255,2] := colors[3,2];
+
   //Conversión a escala de grises.
   toGray();
   //Copia el contenido de la matriz original a la copia LBP.
@@ -860,9 +888,9 @@ begin
           lbp := lbp + trunc(power(2,k));
 
       //Guarda el valor LBP en la matriz de LBP para todos los canales.
-      LBPMAT[i,j,0] := lbp;
-      LBPMAT[i,j,1] := lbp;
-      LBPMAT[i,j,2] := lbp;
+      LBPMAT[i,j,0] := paleta[lbp,0];
+      LBPMAT[i,j,1] := paleta[lbp,1];
+      LBPMAT[i,j,2] := paleta[lbp,2];
     end; //j
   end; //i
 

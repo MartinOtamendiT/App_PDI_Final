@@ -187,7 +187,7 @@ object Form1: TForm1
   end
   object MainMenu1: TMainMenu
     Left = 704
-    Top = 88
+    Top = 72
     object MenuItem1: TMenuItem
       Caption = 'Archivo'
       object MenuItem4: TMenuItem
@@ -298,11 +298,22 @@ object Form1: TForm1
     Filter = 'BMPs (*.bmp)|*.bmp'
     InitialDir = 'C:\Users\R2ro-ThinkPad\Desktop\'
     Left = 704
-    Top = 40
+    Top = 24
   end
   object SavePictureDialog1: TSavePictureDialog
     Filter = 'BMPs (*.bmp)|*.bmp'
     Left = 704
-    Top = 136
+    Top = 120
+  end
+  object ColorDialog1: TColorDialog
+    Color = clTeal
+    CustomColors.Strings = (
+      'ColorA=000000'
+      'ColorB=000080'
+      'ColorC=008000'
+      'ColorD=008080'
+    )
+    Left = 704
+    Top = 168
   end
 end
