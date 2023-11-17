@@ -44,6 +44,7 @@ type
     MenuItem25: TMenuItem;
     MenuItem26: TMenuItem;
     MenuItem27: TMenuItem;
+    MenuItem28: TMenuItem;
     RChannel: TLineSeries;
     Image1: TImage;
     MainMenu1: TMainMenu;
@@ -86,6 +87,7 @@ type
     procedure MenuItem25Click(Sender: TObject);
     procedure MenuItem26Click(Sender: TObject);
     procedure MenuItem27Click(Sender: TObject);
+    procedure MenuItem28Click(Sender: TObject);
     procedure MenuItem2Click(Sender: TObject);
     procedure MenuItem3Click(Sender: TObject);
     procedure MenuItem4Click(Sender: TObject);
@@ -1071,7 +1073,7 @@ begin
   newANCHO := min(ANCHO, BMAPATRON.Width);
   //SetLength(rotatedMAT,newALTO,newANCHO,3);
 
-  //Se realiza la rotación de la imagen a 90°.
+  //Se realiza la resta entre ambas imágenes.
   for i:=0 to newALTO-1 do
     for j:=0 to newANCHO-1 do
       for k:=0 to 2 do
@@ -1099,6 +1101,49 @@ begin
 
   //Se copia el resultado de la matriz al bitmap.
   copMB(newALTO,newANCHO,MAT,BMAP);
+  Image1.Picture.Assign(BMAP); //Visualizar imagen.
+  //Se actualiza el histograma de la imagen.
+  grafHist();
+end;
+
+procedure TForm1.MenuItem28Click(Sender: TObject);
+var
+  i,j  : Integer;
+  k : Byte;
+  convolutionMask : Array[0..8] of Integer;
+  GRADMAT : MATRGB;
+begin
+  //Conversión a escala de grises.
+  {toGray();
+  //Copia el contenido de la matriz original a la matriz de gradiente.
+  SetLength(GRADMAT,ALTO,ANCHO,3);
+  copMtoM(ALTO, ANCHO, MAT, GRADMAT);
+
+  //Inicializa los valores de la máscara de convolución.
+  convolutionMask[0] := 0;
+  convolutionMask[1] := -1;
+  convolutionMask[2] := 0;
+  convolutionMask[3] := -1;
+  convolutionMask[4] := 4;
+  convolutionMask[5] := -1;
+  convolutionMask[6] := 0;
+  convolutionMask[7] := -1;
+  convolutionMask[8] := 0;}
+
+  //Recorre toda la zona a excepción del margen.
+  for i:=StartPoint.Y to EndPoint.Y do
+  begin
+    for j:=StartPoint.X to EndPoint.X do
+    begin
+      for k:=0 to 7 do
+        MAT[i,j,k] := round((0.5)*(abs(MAT[i+1,j,k] - MAT[i,j,k]) + abs(MAT[i,j+1,k] - MAT[i,j,k])));
+    end; //j
+  end; //i
+
+  //Se copia el resultado en la matriz de la imagen.
+  //copMtoM(ALTO, ANCHO, LBPMAT, MAT);
+  //Se copia el resultado de la matriz al bitmap.
+  copMB(ALTO,ANCHO,MAT,BMAP);
   Image1.Picture.Assign(BMAP); //Visualizar imagen.
   //Se actualiza el histograma de la imagen.
   grafHist();

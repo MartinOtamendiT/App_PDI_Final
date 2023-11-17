@@ -236,6 +236,10 @@ object Form1: TForm1
         Caption = 'Gamma'
         OnClick = MenuItem12Click
       end
+      object MenuItem28: TMenuItem
+        Caption = 'Bordes por Gradiente'
+        OnClick = MenuItem28Click
+      end
     end
     object MenuItem6: TMenuItem
       Caption = 'Conversión a otro modelo'
