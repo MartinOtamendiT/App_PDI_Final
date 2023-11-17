@@ -43,6 +43,7 @@ type
     MenuItem24: TMenuItem;
     MenuItem25: TMenuItem;
     MenuItem26: TMenuItem;
+    MenuItem27: TMenuItem;
     RChannel: TLineSeries;
     Image1: TImage;
     MainMenu1: TMainMenu;
@@ -84,6 +85,7 @@ type
     procedure MenuItem24Click(Sender: TObject);
     procedure MenuItem25Click(Sender: TObject);
     procedure MenuItem26Click(Sender: TObject);
+    procedure MenuItem27Click(Sender: TObject);
     procedure MenuItem2Click(Sender: TObject);
     procedure MenuItem3Click(Sender: TObject);
     procedure MenuItem4Click(Sender: TObject);
@@ -728,6 +730,9 @@ begin
   copMtoM(ALTO, ANCHO, MATOrigin, MAT);
   //Se copia el resultado de la matriz al bitmap.
   copMB(ALTO,ANCHO,MAT,BMAP);
+  //Actualiza y establece la selección para toda la imagen por defecto.
+  StartPoint := Point(0,0);
+  EndPoint := Point(ANCHO-1, ALTO-1);
 
   //Visualizar el resultado en pantalla.
   Image1.Picture.Assign(BMAP);
@@ -1044,6 +1049,59 @@ begin
   Form5.Image1.Picture.Assign(BMAP);
   copMB(ALTO,ANCHO,MAT,BMAP);
   Form5.ShowModal;
+end;
+
+//Aplica filtro circular de patrón.
+procedure TForm1.MenuItem27Click(Sender: TObject);
+var
+  MATPATRON : MATRGB;
+  BMAPATRON : TBitmap;
+  newANCHO, newALTO, result : Integer;
+  i,j  : Integer;
+  k : Byte;
+begin
+  //Crea el objeto para guardar el patrón circular.
+  BMAPATRON := TBitmap.Create;
+  BMAPATRON.LoadFromFile('./patron.bmp');
+  SetLength(MATPATRON,BMAPATRON.Height,BMAPATRON.Width,3);
+  copBM(BMAPATRON.Height, BMAPATRON.Width, MATPATRON, BMAPATRON);
+
+  //Define las dimensiones de la nueva imagen.
+  newALTO := min(ALTO, BMAPATRON.Height);
+  newANCHO := min(ANCHO, BMAPATRON.Width);
+  //SetLength(rotatedMAT,newALTO,newANCHO,3);
+
+  //Se realiza la resta entre ambas imágenes.
+  for i:=0 to newALTO-1 do
+    for j:=0 to newANCHO-1 do
+      for k:=0 to 2 do
+      begin
+        result := MAT[i,j,k] - MATPATRON[i,j,k];
+        if result <= 0 then
+          MAT[i,j,k] := 0
+        else
+          MAT[i,j,k] := result;
+      end;
+
+  //Actualiza altos y anchos globales de la imagen y del bitmap.
+  ALTO := newALTO;
+  ANCHO := newANCHO;
+  BMAP.Height := newALTO;
+  BMAP.Width := newANCHO;
+
+  //Actualiza y establece la selección para toda la imagen por defecto.
+  StartPoint := Point(0,0);
+  EndPoint := Point(ANCHO-1, ALTO-1);
+
+  //Copia la matriz rotada a la matriz de la imagen.
+  //SetLength(MAT,ALTO,ANCHO,3);
+  //copMtoM(ALTO,ANCHO,rotatedMAT,MAT);
+
+  //Se copia el resultado de la matriz al bitmap.
+  copMB(newALTO,newANCHO,MAT,BMAP);
+  Image1.Picture.Assign(BMAP); //Visualizar imagen.
+  //Se actualiza el histograma de la imagen.
+  grafHist();
 end;
 
 //Copiar el contenido de la imagen a una Matriz.

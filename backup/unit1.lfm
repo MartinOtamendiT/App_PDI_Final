@@ -291,6 +291,10 @@ object Form1: TForm1
         Caption = 'Reflejar imagen'
         OnClick = MenuItem25Click
       end
+      object MenuItem27: TMenuItem
+        Caption = 'Filtro circular'
+        OnClick = MenuItem27Click
+      end
     end
   end
   object OpenPictureDialog1: TOpenPictureDialog
