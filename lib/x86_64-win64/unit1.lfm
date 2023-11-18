@@ -280,6 +280,10 @@ object Form1: TForm1
           OnClick = MenuItem26Click
         end
       end
+      object MenuItem29: TMenuItem
+        Caption = 'Suavizado aritmético'
+        OnClick = MenuItem29Click
+      end
     end
     object MenuItem22: TMenuItem
       Caption = 'Imagen'

@@ -45,6 +45,7 @@ type
     MenuItem26: TMenuItem;
     MenuItem27: TMenuItem;
     MenuItem28: TMenuItem;
+    MenuItem29: TMenuItem;
     RChannel: TLineSeries;
     Image1: TImage;
     MainMenu1: TMainMenu;
@@ -88,6 +89,7 @@ type
     procedure MenuItem26Click(Sender: TObject);
     procedure MenuItem27Click(Sender: TObject);
     procedure MenuItem28Click(Sender: TObject);
+    procedure MenuItem29Click(Sender: TObject);
     procedure MenuItem2Click(Sender: TObject);
     procedure MenuItem3Click(Sender: TObject);
     procedure MenuItem4Click(Sender: TObject);
@@ -842,6 +844,9 @@ var
   k : Byte;
   colors: Array[0..3] of Array[0..2] of Byte;
   c: Tcolor;
+  d1,d2,d3 : Float;
+  n1,n2,n3: Byte;
+  l: Integer;
 begin
   //Pide los 4 colores al usuario y los guarda en un arreglo.
   for k:=0 to 3 do
@@ -854,6 +859,33 @@ begin
       colors[k,2] := GetBValue(c);
     end;
   end;
+  //Método 2.
+  {d1 := sqrt(power(colors[1,0]-colors[0,0],2)+power(colors[1,1]-colors[0,1],2)+power(colors[1,2]-colors[0,2],2));
+  d2 := sqrt(power(colors[2,0]-colors[1,0],2)+power(colors[2,1]-colors[1,1],2)+power(colors[2,2]-colors[1,2],2));
+  d3 := sqrt(power(colors[3,0]-colors[2,0],2)+power(colors[3,1]-colors[2,1],2)+power(colors[3,2]-colors[2,2],2));
+  l := round(d1+d2+d3);
+  n1 := round(255 * d1 / l);
+  n2 := round(255 * d2 / l);
+  n3 := 255-n1-n2;
+  j:=0;
+  for i:=0 to n1-1 do
+  begin
+    for k:=0 to 2 do
+      paleta[j,k] := Round(colors[0,k] + (j/255)*(colors[1,k] - colors[0,k]));
+    j:=j+1;
+  end;
+  for i:=0 to n2-1 do
+  begin
+    for k:=0 to 2 do
+      paleta[j,k] := Round(colors[1,k] + (j/255)*(colors[2,k] - colors[1,k]));
+    j:=j+1;
+  end;
+  for i:=0 to n3-1 do
+  begin
+    for k:=0 to 2 do
+      paleta[j,k] := Round(colors[2,k] + (j/255)*(colors[3,k] - colors[2,k]));
+    j:=j+1;
+  end;}
   //Calcula la paleta de colores mediante interpolación lineal.
   for j:=0 to 2 do
   begin
@@ -1121,6 +1153,47 @@ begin
   //Se copia el resultado de la matriz al bitmap.
   copMB(ALTO,ANCHO,MAT,BMAP);
   Image1.Picture.Assign(BMAP); //Visualizar imagen.
+  //Se actualiza el histograma de la imagen.
+  grafHist();
+end;
+
+//Aplica suavizado aritmético.
+procedure TForm1.MenuItem29Click(Sender: TObject);
+var
+  RESCONVMAT : MATRGB;
+  convArray : Array of Integer = (1,1,1,1,1,1,1,1);
+  i,j:  Integer;
+  k: Byte;
+  suma: Integer;
+begin
+  //Copia el contenido de la matriz original a las copias LBP.
+  SetLength(RESCONVMAT,ALTO,ANCHO,3);
+  copMtoM(ALTO, ANCHO, MAT, RESCONVMAT);
+
+  //Recorre toda la zona a excepción del margen.
+  for i:=StartPoint.Y+1 to EndPoint.Y-1 do
+  begin
+    for j:=StartPoint.X+1 to EndPoint.X-1 do
+    begin
+      //Calcula la suma de las multiplicaciones de convolución.
+      for k:=0 to 2 do
+      begin
+        suma := MAT[i-1,j-1,k] * convArray[0] + MAT[i-1,j,k] * convArray[1] + MAT[i-1,j+1,k] * convArray[2]
+        + MAT[i,j-1,k] * convArray[3] + MAT[i,j+1,k] * convArray[4]
+        + MAT[i+1,j-1,k] * convArray[5] + MAT[i+1,j,k] * convArray[6] + MAT[i+1,j+1,k] * convArray[7];
+
+        //Determina el promedio de la suma y lo asigna al píxel pívote.
+        RESCONVMAT[i,j,k] := round(suma/8);
+      end; //k
+    end; //j
+  end; //i
+
+  //Se copia el resultado de la convolución en la matriz de la imagen.
+  copMtoM(ALTO, ANCHO, RESCONVMAT, MAT);
+  //Se copia el resultado de la matriz al bitmap.
+  copMB(ALTO,ANCHO,MAT,BMAP);
+  //Visualizar el resultado en pantalla.
+  Image1.Picture.Assign(BMAP);
   //Se actualiza el histograma de la imagen.
   grafHist();
 end;
