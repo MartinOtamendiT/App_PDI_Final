@@ -6,8 +6,8 @@ interface
 
 uses
   Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, Menus, Unit2,
-  Unit3, Unit4, Unit5, ExtDlgs, LCLIntf, ComCtrls, StdCtrls, TAGraph, TASeries, math,
-  TADrawUtils, TACustomSeries, LazLogger;
+  Unit3, Unit4, Unit5, ExtDlgs, LCLIntf, ComCtrls, StdCtrls, ColorBox, TAGraph,
+  TASeries, math, TADrawUtils, TACustomSeries, LazLogger;
 
 type
 
@@ -46,6 +46,7 @@ type
     MenuItem27: TMenuItem;
     MenuItem28: TMenuItem;
     MenuItem29: TMenuItem;
+    MenuItem30: TMenuItem;
     RChannel: TLineSeries;
     Image1: TImage;
     MainMenu1: TMainMenu;
@@ -91,6 +92,7 @@ type
     procedure MenuItem28Click(Sender: TObject);
     procedure MenuItem29Click(Sender: TObject);
     procedure MenuItem2Click(Sender: TObject);
+    procedure MenuItem30Click(Sender: TObject);
     procedure MenuItem3Click(Sender: TObject);
     procedure MenuItem4Click(Sender: TObject);
     procedure MenuItem5Click(Sender: TObject);
@@ -221,6 +223,80 @@ begin
   //Deshabilita conversión a HSV. Habilita conversión a RGB.
   //MenuItem2.Enabled := False;
   //MenuItem9.Enabled := True;
+end;
+
+
+//Implementa la transformada de Fourier y permite visualizar el espectro.
+procedure TForm1.MenuItem30Click(Sender: TObject);
+var
+  FOURIERMAT : Array of Array of Real;
+  i,j, u,v, u2,v2 : Integer;
+  realVal, imVal, magnitudEspectral, magnitudMax, magnitudMin :  Real;
+  k : Byte;
+begin
+  //Conversión a escala de grises.
+  toGray();
+  //Copia el contenido de la matriz original a la del resultado de Fourier.
+  SetLength(FOURIERMAT,ANCHO,ALTO);
+  //copMtoM(ALTO, ANCHO, MAT, FOURIERMAT);
+
+  magnitudMax := 0;
+  magnitudMin := 0;
+
+  for u:=0 to ANCHO-1 do
+  begin
+    for v:=0 to ALTO-1 do
+    begin
+      realVal := 0;
+      imVal := 0;
+      for i:=0 to ANCHO-1 do
+        for j:=0 to ALTO-1 do
+        begin
+          //Traslación del píxel.
+          u2 := floor(ANCHO/2) - u;
+          v2 := v - floor(ALTO/2);
+          realVal := realVal + MAT[i,j,0] * cos((2 * Pi * (u2*i/ANCHO + v2*j/ALTO)));
+          imVal := imVal +(-MAT[i,j,0] * sin((2 * Pi * (u2*i/ANCHO + v2*j/ALTO))));
+        end;
+      magnitudEspectral := sqrt(sqr(realVal) + sqr(imVal));
+      FOURIERMAT[u,v] := magnitudEspectral;
+
+      If magnitudEspectral < magnitudMin then
+        magnitudMin := magnitudEspectral;
+
+      If magnitudEspectral > magnitudMax then
+        magnitudMax := magnitudEspectral;
+    end;
+  end;
+  //Normalización
+  for u:=0 to ANCHO-1 do
+    for v:=0 to ALTO-1 do
+    begin
+      //FOURIERMAT[u,v] := (FOURIERMAT[u,v] - magnitudMin) / (magnitudMax - magnitudMin)*255;
+      FOURIERMAT[u,v] := 255/log10(1 + FOURIERMAT[u,v]);
+      //magnitudEspectral:= FOURIERMAT[u,v];
+    end;
+
+  for i:=0 to ANCHO-1 do
+    for j:=0 to ALTO-1 do
+    begin
+      {magnitudEspectral := v - floor((ALTO-1)/2);
+      if magnitudEspectral < 0 then
+        for k:=0 to 2 do
+          MAT[i,j,k] := round(FOURIERMAT[i, floor((ALTO)/2) + abs(round(magnitudEspectral))])
+      else}
+        for k:=0 to 2 do
+          MAT[i,j,k] := round(FOURIERMAT[i,j])
+    end;
+
+  //Se copia el resultado en la matriz de la imagen.
+  //copMtoM(ALTO, ANCHO, FOURIERMAT, MAT);
+  //Se copia el resultado de la matriz al bitmap.
+  copMB(ALTO,ANCHO,MAT,BMAP);
+  //Visualizar el resultado en pantalla.
+  Image1.Picture.Assign(BMAP);
+  //Se actualiza el histograma de la imagen.
+  grafHist();
 end;
 
 procedure TForm1.MenuItem3Click(Sender: TObject);

@@ -303,6 +303,10 @@ object Form1: TForm1
         Caption = 'Filtro circular'
         OnClick = MenuItem27Click
       end
+      object MenuItem30: TMenuItem
+        Caption = 'Fourier'
+        OnClick = MenuItem30Click
+      end
     end
   end
   object OpenPictureDialog1: TOpenPictureDialog
