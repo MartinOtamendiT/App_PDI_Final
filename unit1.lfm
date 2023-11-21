@@ -185,6 +185,13 @@ object Form1: TForm1
     ParentColor = False
     OnClick = Label2Click
   end
+  object ProgressBar1: TProgressBar
+    Left = 632
+    Height = 20
+    Top = 320
+    Width = 200
+    TabOrder = 3
+  end
   object MainMenu1: TMainMenu
     Left = 704
     Top = 72
@@ -304,8 +311,12 @@ object Form1: TForm1
         OnClick = MenuItem27Click
       end
       object MenuItem30: TMenuItem
-        Caption = 'Fourier'
+        Caption = 'Espectro de Fourier'
         OnClick = MenuItem30Click
+      end
+      object MenuItem31: TMenuItem
+        Caption = 'Filtro pasa alta'
+        OnClick = MenuItem31Click
       end
     end
   end

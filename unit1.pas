@@ -18,6 +18,8 @@ type
   MATRGB = Array of Array of Array of Byte;
   //Matriz que guardará la frecuencia de cada valor entre 0 y 255 por canal.
   matFrecRGB = Array[0..3] of Array[0..255] of Integer;
+  //Matriz que guardará números complejos (parte real en 0, parte imaginaria en 1).
+  complexMAT = array of array of array[0..1] of Real;
 
   TForm1 = class(TForm)
     Chart1: TChart;
@@ -47,6 +49,8 @@ type
     MenuItem28: TMenuItem;
     MenuItem29: TMenuItem;
     MenuItem30: TMenuItem;
+    MenuItem31: TMenuItem;
+    ProgressBar1: TProgressBar;
     RChannel: TLineSeries;
     Image1: TImage;
     MainMenu1: TMainMenu;
@@ -93,6 +97,7 @@ type
     procedure MenuItem29Click(Sender: TObject);
     procedure MenuItem2Click(Sender: TObject);
     procedure MenuItem30Click(Sender: TObject);
+    procedure MenuItem31Click(Sender: TObject);
     procedure MenuItem3Click(Sender: TObject);
     procedure MenuItem4Click(Sender: TObject);
     procedure MenuItem5Click(Sender: TObject);
@@ -125,6 +130,8 @@ type
     procedure rotarImagen(direction: Boolean);
     //Permite que el usuario seleccione 4 colores y calcula la paleta correspondiente con interpolación lineal.
     procedure generarPaletaColores();
+    //Función que calcula la transformada de Fourier
+    procedure calcTFourier(var FOURIERMAT: complexMAT);
   end;
 
 //Variables globales.
@@ -225,68 +232,138 @@ begin
   //MenuItem9.Enabled := True;
 end;
 
-
-//Implementa la transformada de Fourier y permite visualizar el espectro.
-procedure TForm1.MenuItem30Click(Sender: TObject);
+//Función que calcula la transformada de Fourier de la imagen.
+procedure TForm1.calcTFourier(var FOURIERMAT: complexMAT);
 var
-  FOURIERMAT : Array of Array of Real;
-  i,j, u,v, u2,v2 : Integer;
-  realVal, imVal, magnitudEspectral, magnitudMax, magnitudMin :  Real;
-  k : Byte;
+  i,j, u,v, ut,vt : Integer;
+  realVal, imVal:  Real;
 begin
-  //Conversión a escala de grises.
-  toGray();
-  //Copia el contenido de la matriz original a la del resultado de Fourier.
-  SetLength(FOURIERMAT,ANCHO,ALTO);
-  //copMtoM(ALTO, ANCHO, MAT, FOURIERMAT);
-
-  magnitudMax := 0;
-  magnitudMin := 0;
-
   for u:=0 to ANCHO-1 do
   begin
     for v:=0 to ALTO-1 do
     begin
-      realVal := 0;
-      imVal := 0;
+      //Inicializa las sumas de ambas partes en 0.
+      FOURIERMAT[u,v,0] := 0;
+      FOURIERMAT[u,v,1] := 0;
+      //Aquí se calcula la transformada.
       for i:=0 to ANCHO-1 do
         for j:=0 to ALTO-1 do
         begin
-          //Traslación del píxel.
-          u2 := floor(ANCHO/2) - u;
-          v2 := v - floor(ALTO/2);
-          realVal := realVal + MAT[i,j,0] * cos((2 * Pi * (u2*i/ANCHO + v2*j/ALTO)));
-          imVal := imVal +(-MAT[i,j,0] * sin((2 * Pi * (u2*i/ANCHO + v2*j/ALTO))));
-        end;
-      magnitudEspectral := sqrt(sqr(realVal) + sqr(imVal));
-      FOURIERMAT[u,v] := magnitudEspectral;
+          //Traslación de u,v al plano de Fourier.
+          ut := floor(ANCHO/2) - u;
+          vt := v - floor(ALTO/2);
+          //Calcula las partes real e imaginaria de la transformada.
+          realVal := MAT[i,j,0] * cos(2 * Pi * (ut*i/ANCHO + vt*j/ALTO));
+          imVal := -MAT[i,j,0] * sin(2 * Pi * (ut*i/ANCHO + vt*j/ALTO));
+          //Agrega ambos valores a la suma correspondiente.
+          FOURIERMAT[u,v,0] := FOURIERMAT[u,v,0] + realVal;
+          FOURIERMAT[u,v,1] := FOURIERMAT[u,v,1] + imVal;
+        end;//j
+    end;//v
+    ProgressBar1.StepIt;
+  end;//u
+end;
 
-      If magnitudEspectral < magnitudMin then
-        magnitudMin := magnitudEspectral;
+//Implementa la transformada de Fourier y permite visualizar el espectro.
+procedure TForm1.MenuItem30Click(Sender: TObject);
+var
+  FOURIERMAT : complexMAT;
+  FOURIERMAGS : Array of Array of Real;
+  ESPECMAT : MATRGB;
+  i,j, u,v : Integer;
+  magnitudMax:  Real;
+  k : Byte;
+begin
+  //Conversión a escala de grises.
+  toGray();
+  SetLength(FOURIERMAT,ANCHO,ALTO);//Valores de la transformada de Fourier.
+  SetLength(FOURIERMAGS,ANCHO,ALTO);//Magnitudes de la transformada.
+  SetLength(ESPECMAT,ALTO,ANCHO,3); //Espectro.
 
-      If magnitudEspectral > magnitudMax then
-        magnitudMax := magnitudEspectral;
+  ProgressBar1.Position := 0;
+  ProgressBar1.Step:= round(ProgressBar1.Width / (ANCHO));
+  //Calcula la transformada de Fourier de la imagen.
+  calcTFourier(FOURIERMAT);
+
+  //Calcula la magnitud de los valores resultantes de la transformada para cada píxel.
+  magnitudMax := 0;
+  for u:=0 to ANCHO-1 do
+  begin
+    for v:=0 to ALTO-1 do
+    begin
+      FOURIERMAGS[u,v] := sqrt(sqr(FOURIERMAT[u,v,0]) + sqr(FOURIERMAT[u,v,1]));
+      //Busca la magnitud máxima en la imagen.
+      If FOURIERMAGS[u,v] > magnitudMax then
+        magnitudMax := FOURIERMAGS[u,v];
     end;
   end;
-  //Normalización
+
+  //Normaliza los valores de las magnitudes.
   for u:=0 to ANCHO-1 do
     for v:=0 to ALTO-1 do
     begin
-      //FOURIERMAT[u,v] := (FOURIERMAT[u,v] - magnitudMin) / (magnitudMax - magnitudMin)*255;
-      FOURIERMAT[u,v] := 255/log10(1 + FOURIERMAT[u,v]);
-      //magnitudEspectral:= FOURIERMAT[u,v];
+      //FOURIERMAGS[u,v] := (FOURIERMAGS[u,v])/magnitudMax * 255;
+      FOURIERMAGS[u,v] := 255/log10(1 + magnitudMax)*log10(1 + abs(FOURIERMAGS[u,v]));
     end;
 
   for i:=0 to ANCHO-1 do
     for j:=0 to ALTO-1 do
+      for k:=0 to 2 do
+        ESPECMAT[i,j,k] := round(FOURIERMAGS[i,j]);
+
+  //Se muestra el resultado del espectro en una nueva ventana.
+  copMB(ALTO,ANCHO,ESPECMAT,BMAP);
+  Form5.Image1.Picture.Assign(BMAP);
+  copMB(ALTO,ANCHO,MAT,BMAP);
+  Form5.ShowModal;
+end;
+
+//Aplica filtro Pasa alta Gaussiano a la imagen.
+procedure TForm1.MenuItem31Click(Sender: TObject);
+var
+  FOURIERMAT : complexMAT;
+  FOURIERMAGS : Array of Array of Real;
+  ESPECMAT : MATRGB;
+  i,j, u,v : Integer;
+  magnitudMax, D, H:  Real;
+  k : Byte;
+  ut,vt : Integer;
+  realVal, imVal:  Real;
+begin
+  //Conversión a escala de grises.
+  toGray();
+  SetLength(FOURIERMAT,ANCHO,ALTO);//Valores de la transformada de Fourier.
+  SetLength(FOURIERMAGS,ANCHO,ALTO);//Magnitudes de la transformada.
+  SetLength(ESPECMAT,ALTO,ANCHO,3); //Espectro.
+
+  ProgressBar1.Position := 0;
+  ProgressBar1.Step:= round(ProgressBar1.Width / (ANCHO));
+  //Calcula la transformada de Fourier de la imagen.
+  calcTFourier(FOURIERMAT);
+
+  //Aplica el filtro.
+  for u:=0 to ANCHO-1 do
+    for v:=0 to ALTO-1 do
     begin
-      {magnitudEspectral := v - floor((ALTO-1)/2);
-      if magnitudEspectral < 0 then
-        for k:=0 to 2 do
-          MAT[i,j,k] := round(FOURIERMAT[i, floor((ALTO)/2) + abs(round(magnitudEspectral))])
-      else}
-        for k:=0 to 2 do
-          MAT[i,j,k] := round(FOURIERMAT[i,j])
+      //Traslación de u,v al plano de Fourier.
+      ut := floor(ANCHO/2) - u;
+      vt := v - floor(ALTO/2);
+      D := sqrt(sqr(ut - ANCHO/2) + sqr(vt - ALTO/2));
+      H := -exp(-sqr(D)/2*sqr(60));
+      {FOURIERMAT[u,v,0]*H + FOURIERMAT[u,v,1]*H;
+      realVal := 0;
+      imVal := 0;
+      //Aquí se calcula la transformada.
+      for i:=0 to ANCHO-1 do
+        for j:=0 to ALTO-1 do
+        begin
+          //Calcula las partes real e imaginaria de la transformada.
+          realVal := MAT[i,j,0] * cos(2 * Pi * (ut*i/ANCHO + vt*j/ALTO));
+          imVal := -MAT[i,j,0] * sin(2 * Pi * (ut*i/ANCHO + vt*j/ALTO));
+          //Agrega ambos valores a la suma correspondiente.
+          FOURIERMAT[u,v,0] := FOURIERMAT[u,v,0] + realVal;
+          FOURIERMAT[u,v,1] := FOURIERMAT[u,v,1] + imVal;
+        end;//j}
     end;
 
   //Se copia el resultado en la matriz de la imagen.
@@ -301,7 +378,6 @@ end;
 
 procedure TForm1.MenuItem3Click(Sender: TObject);
 begin
-
 end;
 
 //Se abre imagen con ScanLine.
