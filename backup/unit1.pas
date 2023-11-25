@@ -50,6 +50,7 @@ type
     MenuItem29: TMenuItem;
     MenuItem30: TMenuItem;
     MenuItem31: TMenuItem;
+    MenuItem32: TMenuItem;
     ProgressBar1: TProgressBar;
     RChannel: TLineSeries;
     Image1: TImage;
@@ -98,6 +99,7 @@ type
     procedure MenuItem2Click(Sender: TObject);
     procedure MenuItem30Click(Sender: TObject);
     procedure MenuItem31Click(Sender: TObject);
+    procedure MenuItem32Click(Sender: TObject);
     procedure MenuItem3Click(Sender: TObject);
     procedure MenuItem4Click(Sender: TObject);
     procedure MenuItem5Click(Sender: TObject);
@@ -302,7 +304,7 @@ begin
   for u:=0 to ANCHO-1 do
     for v:=0 to ALTO-1 do
     begin
-      //FOURIERMAGS[u,v] := (FOURIERMAGS[u,v])/magnitudMax * 255;
+      FOURIERMAGS[u,v] := (FOURIERMAGS[u,v])/magnitudMax * 255;
       FOURIERMAGS[u,v] := 255/log10(1 + magnitudMax)*log10(1 + abs(FOURIERMAGS[u,v]));
     end;
 
@@ -349,7 +351,7 @@ begin
       ut := floor(ANCHO/2) - u;
       vt := v - floor(ALTO/2);
       D := sqrt(sqr(ut - ANCHO/2) + sqr(vt - ALTO/2));
-      H := -exp(-sqr(D)/2*sqr(60));
+      H := -exp(-sqr(D)/(2*sqr(60)));
       {FOURIERMAT[u,v,0]*H + FOURIERMAT[u,v,1]*H;
       realVal := 0;
       imVal := 0;
@@ -376,9 +378,46 @@ begin
   grafHist();
 end;
 
+//Aplica filtro morfológico de dilatación.
+//Fondo negro.
+procedure TForm1.MenuItem32Click(Sender: TObject);
+var
+  MORFOMAT : MATRGB;
+  i,j, x,y, MaxPixel : Integer;
+  k : Byte;
+  elementEstructura: Array[0..2, 0..2] of Integer =
+  ((255, 255, 255),
+  (255, 255, 255),
+  (255, 255, 255));
+begin
+  SetLength(MORFOMAT,ALTO,ANCHO,3); //Copia matriz.
+  copMtoM(ALTO, ANCHO, MAT, MORFOMAT);
+
+  for i := 1 to ALTO-2 do
+    for j := 1 to ANCHO-2 do
+    begin
+
+      for y := -1 to 1 do
+        for x := -1 to 1 do
+          if MAT[y+i, x+j] = 255 then
+            MORFOMAT[i,j,0] := 255;
+
+      MORFOMAT[i,j,1] := MORFOMAT[i,j,0];
+      MORFOMAT[i,j,2] := MORFOMAT[i,j,0];
+    end;
+
+  //Se copia el resultado en la matriz de la imagen.
+  copMtoM(ALTO, ANCHO, MORFOMAT, MAT);
+  //Se copia el resultado de la matriz al bitmap.
+  copMB(ALTO,ANCHO,MAT,BMAP);
+  //Visualizar el resultado en pantalla.
+  Image1.Picture.Assign(BMAP);
+  //Se actualiza el histograma de la imagen.
+  grafHist();
+end;
+
 procedure TForm1.MenuItem3Click(Sender: TObject);
 begin
-  grafHist();
 end;
 
 //Se abre imagen con ScanLine.
