@@ -154,6 +154,7 @@ var
   //Matrices de la imagen.
   MAT           : MATRGB;
   MATOrigin     : MATRGB;
+  MAT2AUX  : MATRGB;
   //Matriz de frecuencias para el histograma.
   matHist : matFrecRGB;
   //Objeto orientado a directivas/metodos para .BMP.
@@ -397,10 +398,11 @@ begin
   //Aplica binarización a la imagen en caso de NO ser binaria.
   StartPoint := Point(0,0);
   EndPoint := Point(ANCHO-1, ALTO-1);
-  binarizar(min(ALTO,ANCHO));
+  //binarizar(min(ALTO,ANCHO));
   //Se copia matriz original a la del resultado del filtro.
   SetLength(MORFOMAT,ALTO,ANCHO,3);
   copMtoM(ALTO, ANCHO, MAT, MORFOMAT);
+
 
   //Se recorre toda la imagen.
   for i := 1 to ALTO-2 do
@@ -415,7 +417,7 @@ begin
         while (matchFlag = False) AND  (x<=1) do
         begin
           //El píxel en la imagen y el píxel en el elemento estructura coinciden.
-          if (MAT[y+i, x+j,0] = elementEstructura[y+1,x+1]) AND (elementEstructura[y+1,x+1] = 255) then
+          if (MAT2AUX[y+i, x+j,0] = elementEstructura[y+1,x+1]) AND (elementEstructura[y+1,x+1] = 255) then
           begin
             MORFOMAT[i,j,0] := 255;
             MORFOMAT[i,j,1] := 255;
@@ -430,14 +432,11 @@ begin
     end; //j
 
   //Se copia el resultado en la matriz de la imagen.
-  copMtoM(ALTO, ANCHO, MORFOMAT, MAT);
+  copMtoM(ALTO, ANCHO, MORFOMAT, MAT2AUX);
   //Se copia el resultado de la matriz al bitmap.
-  copMB(ALTO,ANCHO,MAT,BMAP);
-  //BMAPAUX.Create;
+  copMB(ALTO,ANCHO,MAT2AUX,BMAPAUX);
   //Visualizar el resultado en pantalla.
-  Image2.Picture.Assign(BMAP);
-  //Se actualiza el histograma de la imagen.
-  grafHist();
+  Image2.Picture.Assign(BMAPAUX);
 end;
 
 procedure TForm1.MenuItem3Click(Sender: TObject);
@@ -463,12 +462,19 @@ begin
       BMAP.PixelFormat:=pf24bit;
     end;
 
+    //Se copian las propiedades del BMAP origen al BMAP auxiliar.
+    BMAPAUX := Tbitmap.Create;
+    BMAPAUX.Assign(BMAP);
+
     StatusBar1.Panels[8].Text:= IntToStr(ALTO) + 'x' + IntToStr(ANCHO);
     SetLength(MAT,ALTO,ANCHO,3);
     SetLength(MATOrigin,ALTO,ANCHO,3);
+    SetLength(MAT2AUX,ALTO,ANCHO,3);
     copBM(ALTO, ANCHO, MAT, BMAP);
     copMtoM(ALTO, ANCHO, MAT, MATOrigin); //Se guarda una copia del edo. original de la matriz.
+    copMtoM(ALTO, ANCHO, MAT, MAT2AUX); //Se guarda una copia para el auxiliar de la imagen.
     Image1.Picture.Assign(BMAP); //Visualizar imagen.
+    Image2.Picture.Assign(BMAP); //Visualizar imagen.
 
     //Inicializa la selección para toda la imagen.
     StartPoint := Point(0,0);
@@ -513,6 +519,8 @@ begin
     end; //j
   end; //i
 
+  //Se guarda una copia en la matriz auxiliar.
+  copMtoM(ALTO, ANCHO, MAT, MAT2AUX);
   //Se copia el resultado de la matriz al bitmap.
   copMB(ALTO,ANCHO,MAT,BMAP);
   //Visualizar el resultado en pantalla.
@@ -531,6 +539,8 @@ procedure TForm1.MenuItem7Click(Sender: TObject);
 begin
   //Se llama a la función que transforma la imagen a escala de grises.
   toGray();
+  //Se guarda una copia en la matriz auxiliar.
+  copMtoM(ALTO, ANCHO, MAT, MAT2AUX);
   //Se copia el resultado de la matriz al bitmap.
   copMB(ALTO,ANCHO,MAT,BMAP);
 
@@ -945,9 +955,14 @@ begin
   ANCHO := ANCHO_origin;
   BMAP.Height := ALTO;
   BMAP.Width := ANCHO;
+  BMAPAUX.Height := ALTO;
+  BMAPAUX.Width := ANCHO;
   SetLength(MAT,ALTO,ANCHO,3);
+  SetLength(MAT2AUX,ALTO,ANCHO,3);
   //Copia el contenido de la matriz con el edo. original a la matriz de imagen.
   copMtoM(ALTO, ANCHO, MATOrigin, MAT);
+  //Se guarda una copia en la matriz auxiliar.
+  copMtoM(ALTO, ANCHO, MAT, MAT2AUX);
   //Se copia el resultado de la matriz al bitmap.
   copMB(ALTO,ANCHO,MAT,BMAP);
   //Actualiza y establece la selección para toda la imagen por defecto.
@@ -956,6 +971,7 @@ begin
 
   //Visualizar el resultado en pantalla.
   Image1.Picture.Assign(BMAP);
+  Image2.Picture.Assign(BMAP);
   //Se actualiza el histograma de la imagen.
   grafHist();
   //MenuItem2.Enabled := True; //Habilita conversión a HSV
@@ -1223,11 +1239,14 @@ begin
 
   //Copia la matriz reflejada a la matriz de la imagen.
   copMtoM(ALTO,ANCHO,reflectedMAT,MAT);
+  copMtoM(ALTO,ANCHO,reflectedMAT,MAT2AUX);
 
   //Se copia el resultado de la matriz al bitmap.
   copMB(ALTO,ANCHO,reflectedMAT,BMAP);
+  copMB(ALTO,ANCHO,reflectedMAT,BMAPAUX);
   //Visualizar el resultado en pantalla.
   Image1.Picture.Assign(BMAP);
+  Image2.Picture.Assign(BMAP);
 end;
 
 //Aplica LBP por desviación estándar.
@@ -1332,12 +1351,18 @@ begin
           MAT[i,j,k] := result;
       end;
 
-  //Actualiza altos y anchos globales de la imagen, bitmap y matriz.
+  //Se guarda una copia para el auxiliar de la imagen.
+  copMtoM(ALTO, ANCHO, MAT, MAT2AUX);
+
+  //Actualiza altos y anchos globales de la imagen, bitmap, bitmap auxiliar y matrices.
   ALTO := newALTO;
   ANCHO := newANCHO;
   BMAP.Height := newALTO;
   BMAP.Width := newANCHO;
+  BMAPAUX.Height := newALTO;
+  BMAPAUX.Width := newANCHO;
   SetLength(MAT,ALTO,ANCHO,3);
+  SetLength(MAT2AUX,ALTO,ANCHO,3);
 
   //Actualiza y establece la selección para toda la imagen por defecto.
   StartPoint := Point(0,0);
@@ -1345,7 +1370,9 @@ begin
 
   //Se copia el resultado de la matriz al bitmap.
   copMB(newALTO,newANCHO,MAT,BMAP);
+  copMB(newALTO,newANCHO,MAT2AUX,BMAPAUX);
   Image1.Picture.Assign(BMAP); //Visualizar imagen.
+  Image2.Picture.Assign(BMAPAUX);
   //Se actualiza el histograma de la imagen.
   grafHist();
 end;
@@ -1769,6 +1796,8 @@ begin
     end; //regx
   end; //if
 
+  //Se guarda una copia en la matriz auxiliar.
+  copMtoM(ALTO, ANCHO, MAT, MAT2AUX);
   //Se copia el resultado de la matriz al bitmap.
   copMB(ALTO,ANCHO,MAT,BMAP);
   //Visualizar el resultado en pantalla.
@@ -1808,6 +1837,8 @@ begin
   ANCHO := newANCHO;
   BMAP.Height := newALTO;
   BMAP.Width := newANCHO;
+  BMAPAUX.Height := newALTO;
+  BMAPAUX.Width := newANCHO;
 
   //Actualiza y establece la selección para toda la imagen por defecto.
   StartPoint := Point(0,0);
@@ -1816,11 +1847,15 @@ begin
   //Copia la matriz rotada a la matriz de la imagen.
   SetLength(MAT,ALTO,ANCHO,3);
   copMtoM(ALTO,ANCHO,rotatedMAT,MAT);
+  SetLength(MAT2AUX,ALTO,ANCHO,3);
+  copMtoM(ALTO,ANCHO,rotatedMAT,MAT2AUX);
 
   //Se copia el resultado de la matriz al bitmap.
   copMB(newALTO,newANCHO,rotatedMAT,BMAP);
+  copMB(newALTO,newANCHO,rotatedMAT,BMAPAUX);
   //Visualizar el resultado en pantalla.
   Image1.Picture.Assign(BMAP);
+  Image2.Picture.Assign(BMAPAUX);
 end;
 
 end.
