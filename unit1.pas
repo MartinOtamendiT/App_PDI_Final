@@ -26,6 +26,7 @@ type
     ColorDialog1: TColorDialog;
     GChannel: TLineSeries;
     BChannel: TLineSeries;
+    Image2: TImage;
     Label1: TLabel;
     Label2: TLabel;
     MenuItem10: TMenuItem;
@@ -67,6 +68,7 @@ type
     OpenPictureDialog1: TOpenPictureDialog;
     SavePictureDialog1: TSavePictureDialog;
     ScrollBox1: TScrollBox;
+    ScrollBox2: TScrollBox;
     StatusBar1: TStatusBar;
     procedure Chart1MouseDown(Sender: TObject; Button: TMouseButton;
       Shift: TShiftState; X, Y: Integer);
@@ -156,6 +158,7 @@ var
   matHist : matFrecRGB;
   //Objeto orientado a directivas/metodos para .BMP.
   BMAP          :Tbitmap;
+  BMAPAUX       :Tbitmap;
   //Matriz de colores calculados con interpolación lineal.
   paleta: Array[0..255] of Array[0..2] of Byte;
 
@@ -378,40 +381,61 @@ begin
   grafHist();
 end;
 
-//Aplica filtro morfológico de dilatación.
-//Fondo negro.
+//Aplica filtro morfológico de dilatación para imágenes con fondo negro.
+//Cómo efecto secundario, erosiona en imágenes con fondo blanco.
 procedure TForm1.MenuItem32Click(Sender: TObject);
 var
   MORFOMAT : MATRGB;
-  i,j, x,y, MaxPixel : Integer;
-  k : Byte;
+  i,j, x,y : Integer;
+  //Bandera que indicará si al menos un píxel del elemento estructura coincide con alguno en la región de la imagen.
+  matchFlag: Boolean;
   elementEstructura: Array[0..2, 0..2] of Integer =
-  ((255, 255, 255),
-  (255, 255, 255),
-  (255, 255, 255));
+  ((0, 255, 0),
+  (0, 255, 0),
+  (0, 255, 0));
 begin
-  SetLength(MORFOMAT,ALTO,ANCHO,3); //Copia matriz.
+  //Aplica binarización a la imagen en caso de NO ser binaria.
+  StartPoint := Point(0,0);
+  EndPoint := Point(ANCHO-1, ALTO-1);
+  binarizar(min(ALTO,ANCHO));
+  //Se copia matriz original a la del resultado del filtro.
+  SetLength(MORFOMAT,ALTO,ANCHO,3);
   copMtoM(ALTO, ANCHO, MAT, MORFOMAT);
 
+  //Se recorre toda la imagen.
   for i := 1 to ALTO-2 do
     for j := 1 to ANCHO-2 do
     begin
-
-      for y := -1 to 1 do
-        for x := -1 to 1 do
-          if MAT[y+i, x+j,0] = 255 then
+      matchFlag := False;
+      y := -1;
+      //Recorrido en la matriz del elemento estructura.
+      while (matchFlag = False) AND  (y<=1) do
+      begin
+        x := -1;
+        while (matchFlag = False) AND  (x<=1) do
+        begin
+          //El píxel en la imagen y el píxel en el elemento estructura coinciden.
+          if (MAT[y+i, x+j,0] = elementEstructura[y+1,x+1]) AND (elementEstructura[y+1,x+1] = 255) then
+          begin
             MORFOMAT[i,j,0] := 255;
-
-      MORFOMAT[i,j,1] := MORFOMAT[i,j,0];
-      MORFOMAT[i,j,2] := MORFOMAT[i,j,0];
-    end;
+            MORFOMAT[i,j,1] := 255;
+            MORFOMAT[i,j,2] := 255;
+            //Indica que se ha encontrado una coincidencia para terminar de buscar en la región.
+            matchFlag := True;
+          end;
+          x := x + 1;
+        end; //x
+        y := y + 1;
+      end; //y
+    end; //j
 
   //Se copia el resultado en la matriz de la imagen.
   copMtoM(ALTO, ANCHO, MORFOMAT, MAT);
   //Se copia el resultado de la matriz al bitmap.
   copMB(ALTO,ANCHO,MAT,BMAP);
+  //BMAPAUX.Create;
   //Visualizar el resultado en pantalla.
-  Image1.Picture.Assign(BMAP);
+  Image2.Picture.Assign(BMAP);
   //Se actualiza el histograma de la imagen.
   grafHist();
 end;
