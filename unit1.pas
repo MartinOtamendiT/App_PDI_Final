@@ -241,30 +241,42 @@ end;
 //Función que calcula la transformada de Fourier de la imagen.
 procedure TForm1.calcTFourier(var FOURIERMAT: complexMAT);
 var
-  i,j, u,v, ut,vt : Integer;
+  i,j, u,v, ut,vt: Integer;
   realVal, imVal:  Real;
+  phiu, phiv : Real;
+  cosw, senw : Real;
+  s : Real;
 begin
-  for u:=0 to ANCHO-1 do
+  //Calcula factor escalar común.
+  s := 1/sqrt(ANCHO * ALTO);
+  //Recorre toda la imagen y calcula la transformada de Fourier de la imagen.
+  for u:=0 to ALTO-1 do
   begin
-    for v:=0 to ALTO-1 do
+    for v:=0 to ANCHO-1 do
     begin
       //Inicializa las sumas de ambas partes en 0.
-      FOURIERMAT[u,v,0] := 0;
-      FOURIERMAT[u,v,1] := 0;
+      realVal := 0;
+      imVal := 0;
+      //Traslación de u,v al plano de Fourier.
+      ut := floor(ALTO/2) - u;
+      vt := v - floor(ANCHO/2);
+      //Calcula factores comunes.
+      phiu := 2 * Pi * u/ALTO ;
+      phiv := 2 * Pi * v/ANCHO;
       //Aquí se calcula la transformada.
-      for i:=0 to ANCHO-1 do
-        for j:=0 to ALTO-1 do
+      for i:=0 to ALTO-1 do
+        for j:=0 to ANCHO-1 do
         begin
-          //Traslación de u,v al plano de Fourier.
-          ut := floor(ANCHO/2) - u;
-          vt := v - floor(ALTO/2);
-          //Calcula las partes real e imaginaria de la transformada.
-          realVal := MAT[i,j,0] * cos(2 * Pi * (ut*i/ANCHO + vt*j/ALTO));
-          imVal := -MAT[i,j,0] * sin(2 * Pi * (ut*i/ANCHO + vt*j/ALTO));
-          //Agrega ambos valores a la suma correspondiente.
-          FOURIERMAT[u,v,0] := FOURIERMAT[u,v,0] + realVal;
-          FOURIERMAT[u,v,1] := FOURIERMAT[u,v,1] + imVal;
+          //Calcula valores de seno y coseno.
+          cosw := cos(phiu*i + phiv*j);
+          senw := sin(phiu*i + phiv*j);
+          //Calcula partes real e imaginaria de la transformada y los agrega a la suma correspondiente.
+          realVal := realVal + MAT[i,j,0] * cosw + MAT[i,j,0] * senw;
+          imVal := imVal + MAT[i,j,0] * cosw - MAT[i,j,0] * senw;
         end;//j
+      //Guarda valores multiplicados por el factor escalar común.
+      FOURIERMAT[u,v,0] := realVal * s;
+      FOURIERMAT[u,v,1] := imVal * s;
     end;//v
     ProgressBar1.StepIt;
   end;//u
@@ -282,8 +294,8 @@ var
 begin
   //Conversión a escala de grises.
   toGray();
-  SetLength(FOURIERMAT,ANCHO,ALTO);//Valores de la transformada de Fourier.
-  SetLength(FOURIERMAGS,ANCHO,ALTO);//Magnitudes de la transformada.
+  SetLength(FOURIERMAT,ALTO,ANCHO);//Valores de la transformada de Fourier.
+  SetLength(FOURIERMAGS,ALTO,ANCHO);//Magnitudes de la transformada.
   SetLength(ESPECMAT,ALTO,ANCHO,3); //Espectro.
 
   ProgressBar1.Position := 0;
@@ -317,69 +329,111 @@ begin
       for k:=0 to 2 do
         ESPECMAT[i,j,k] := round(FOURIERMAGS[i,j]);
 
-  //Se muestra el resultado del espectro en una nueva ventana.
-  copMB(ALTO,ANCHO,ESPECMAT,BMAP);
-  Form5.Image1.Picture.Assign(BMAP);
-  copMB(ALTO,ANCHO,MAT,BMAP);
-  Form5.ShowModal;
+  //Se copia el resultado en la matriz de la imagen.
+  copMtoM(ALTO, ANCHO, ESPECMAT, MAT2AUX);
+  //Se copia el resultado de la matriz al bitmap.
+  copMB(ALTO,ANCHO,MAT2AUX,BMAPAUX);
+  //Se muestra el resultado del espectro en TImage2.
+  Image2.Picture.Assign(BMAPAUX);
 end;
 
 //Aplica filtro Pasa alta Gaussiano a la imagen.
 procedure TForm1.MenuItem31Click(Sender: TObject);
 var
   FOURIERMAT : complexMAT;
+  FOURIERINVMAT : complexMAT;
   FOURIERMAGS : Array of Array of Real;
-  ESPECMAT : MATRGB;
+  FILTEREDMAT : MATRGB;
   i,j, u,v : Integer;
   magnitudMax, D, H:  Real;
   k : Byte;
   ut,vt : Integer;
   realVal, imVal:  Real;
+  phiu, phiv : Real;
+  cosw, senw : Real;
+  s : Real;
 begin
   //Conversión a escala de grises.
   toGray();
-  SetLength(FOURIERMAT,ANCHO,ALTO);//Valores de la transformada de Fourier.
-  SetLength(FOURIERMAGS,ANCHO,ALTO);//Magnitudes de la transformada.
-  SetLength(ESPECMAT,ALTO,ANCHO,3); //Espectro.
+  SetLength(FOURIERMAT,ALTO,ANCHO);//Valores de la transformada de Fourier.
+  SetLength(FOURIERINVMAT,ALTO,ANCHO); //Inverso
+  SetLength(FOURIERMAGS,ALTO,ANCHO);//Magnitudes de la transformada.
+  SetLength(FILTEREDMAT,ALTO,ANCHO,3); //Inverso.
 
   ProgressBar1.Position := 0;
   ProgressBar1.Step:= round(ProgressBar1.Width / (ANCHO));
   //Calcula la transformada de Fourier de la imagen.
   calcTFourier(FOURIERMAT);
 
-  //Aplica el filtro.
-  for u:=0 to ANCHO-1 do
-    for v:=0 to ALTO-1 do
+  //Calcula factor escalar común.
+  s := 1/sqrt(ANCHO * ALTO);
+  //Recorre toda la imagen y calcula la transformada Inversa de Fourier de la imagen.
+  for i:=0 to ALTO-1 do
+    for j:=0 to ANCHO-1 do
     begin
-      //Traslación de u,v al plano de Fourier.
-      ut := floor(ANCHO/2) - u;
-      vt := v - floor(ALTO/2);
-      D := sqrt(sqr(ut - ANCHO/2) + sqr(vt - ALTO/2));
-      H := -exp(-sqr(D)/(2*sqr(60)));
-      {FOURIERMAT[u,v,0]*H + FOURIERMAT[u,v,1]*H;
+      //Inicializa las sumas de ambas partes en 0.
       realVal := 0;
       imVal := 0;
+      //Traslación de u,v al plano de Fourier.
+      //ut := floor(ALTO/2) + i;
+      //vt := j + floor(ANCHO/2);
+      //Calcula factores comunes.
+      phiu := 2 * Pi * i/ALTO ;
+      phiv := 2 * Pi * j/ANCHO;
       //Aquí se calcula la transformada.
-      for i:=0 to ANCHO-1 do
-        for j:=0 to ALTO-1 do
+      for u:=0 to ALTO-1 do
+        for v:=0 to ANCHO-1 do
         begin
-          //Calcula las partes real e imaginaria de la transformada.
-          realVal := MAT[i,j,0] * cos(2 * Pi * (ut*i/ANCHO + vt*j/ALTO));
-          imVal := -MAT[i,j,0] * sin(2 * Pi * (ut*i/ANCHO + vt*j/ALTO));
-          //Agrega ambos valores a la suma correspondiente.
-          FOURIERMAT[u,v,0] := FOURIERMAT[u,v,0] + realVal;
-          FOURIERMAT[u,v,1] := FOURIERMAT[u,v,1] + imVal;
-        end;//j}
+          //Calcula valores de seno y coseno.
+          cosw := cos(phiu*u + phiv*v);
+          senw := -sin(phiu*u + phiv*v);
+          //Calcula partes real e imaginaria de la transformada y los agrega a la suma correspondiente.
+          realVal := realVal + FOURIERMAT[u,v,0] * cosw + FOURIERMAT[u,v,1] * senw;
+          imVal := imVal + FOURIERMAT[u,v,1] * cosw - FOURIERMAT[u,v,0] * senw;
+        end;//v
+      //Guarda valores multiplicados por el factor escalar común.
+      FOURIERINVMAT[i,j,0] := realVal * s;
+      FOURIERINVMAT[i,j,1] := imVal * s;
+    end;//j
+
+  //Calcula la magnitud de los valores resultantes de la transformada para cada píxel.
+  magnitudMax := 0;
+  for u:=0 to ALTO-1 do
+  begin
+    for v:=0 to ANCHO-1 do
+    begin
+      //FOURIERMAGS[u,v] := sqrt(sqr(FOURIERINVMAT[u,v,0]) + sqr(FOURIERINVMAT[u,v,1]));
+      FOURIERMAGS[u,v] := FOURIERINVMAT[u,v,0];
+      //Busca la magnitud máxima en la imagen.
+      If FOURIERMAGS[u,v] > magnitudMax then
+        magnitudMax := FOURIERMAGS[u,v];
     end;
+  end;
+
+  for i:=0 to ALTO-1 do
+    for j:=0 to ANCHO-1 do
+      for k:=0 to 2 do
+        FILTEREDMAT[i,j,k] := round(FOURIERMAGS[i,j]);
+
+  //D := sqrt(sqr(ut - ANCHO/2) + sqr(vt - ALTO/2));
+  //H := -exp(-sqr(D)/(2*sqr(60)));
+  //FOURIERMAT[u,v,0]*H + FOURIERMAT[u,v,1]*H;
+
+  //Se copia el resultado en la matriz de la imagen.
+  copMtoM(ALTO, ANCHO, FILTEREDMAT, MAT2AUX);
+  //Se copia el resultado de la matriz al bitmap.
+  copMB(ALTO,ANCHO,MAT2AUX,BMAPAUX);
+  //Se muestra el resultado del espectro en TImage2.
+  Image2.Picture.Assign(BMAPAUX);
 
   //Se copia el resultado en la matriz de la imagen.
   //copMtoM(ALTO, ANCHO, FOURIERMAT, MAT);
   //Se copia el resultado de la matriz al bitmap.
-  copMB(ALTO,ANCHO,MAT,BMAP);
+  //copMB(ALTO,ANCHO,MAT,BMAP);
   //Visualizar el resultado en pantalla.
-  Image1.Picture.Assign(BMAP);
+  //Image1.Picture.Assign(BMAP);
   //Se actualiza el histograma de la imagen.
-  grafHist();
+  //grafHist();
 end;
 
 //Aplica filtro morfológico de dilatación para imágenes con fondo negro.
@@ -396,8 +450,8 @@ var
   (0, 255, 0));
 begin
   //Aplica binarización a la imagen en caso de NO ser binaria.
-  StartPoint := Point(0,0);
-  EndPoint := Point(ANCHO-1, ALTO-1);
+  //StartPoint := Point(0,0);
+  //EndPoint := Point(ANCHO-1, ALTO-1);
   //binarizar(min(ALTO,ANCHO));
   //Se copia matriz original a la del resultado del filtro.
   SetLength(MORFOMAT,ALTO,ANCHO,3);
