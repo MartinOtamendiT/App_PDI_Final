@@ -29,6 +29,8 @@ type
     Image2: TImage;
     Label1: TLabel;
     Label2: TLabel;
+    Label3: TLabel;
+    Label4: TLabel;
     MenuItem10: TMenuItem;
     MenuItem11: TMenuItem;
     MenuItem12: TMenuItem;
@@ -233,15 +235,12 @@ begin
   BChannel.title := 'H';
   GChannel.title := 'S';
   RChannel.title := 'V';
-  //Deshabilita conversión a HSV. Habilita conversión a RGB.
-  //MenuItem2.Enabled := False;
-  //MenuItem9.Enabled := True;
 end;
 
 //Función que calcula la transformada de Fourier de la imagen.
 procedure TForm1.calcTFourier(var FOURIERMAT: complexMAT);
 var
-  i,j, u,v, ut,vt: Integer;
+  i,j, u,v: Integer;
   realVal, imVal:  Real;
   phiu, phiv : Real;
   cosw, senw : Real;
@@ -257,9 +256,6 @@ begin
       //Inicializa las sumas de ambas partes en 0.
       realVal := 0;
       imVal := 0;
-      //Traslación de u,v al plano de Fourier.
-      ut := floor(ALTO/2) - u;
-      vt := v - floor(ANCHO/2);
       //Calcula factores comunes.
       phiu := 2 * Pi * u/ALTO ;
       phiv := 2 * Pi * v/ANCHO;
@@ -288,8 +284,8 @@ var
   FOURIERMAT : complexMAT;
   FOURIERMAGS : Array of Array of Real;
   ESPECMAT : MATRGB;
-  i,j, u,v : Integer;
-  magnitudMax:  Real;
+  i,j, u,v, m, n : Integer;
+  magnitudMax, tmp:  Real;
   k : Byte;
 begin
   //Conversión a escala de grises.
@@ -299,33 +295,56 @@ begin
   SetLength(ESPECMAT,ALTO,ANCHO,3); //Espectro.
 
   ProgressBar1.Position := 0;
-  ProgressBar1.Step:= round(ProgressBar1.Width / (ANCHO));
+  ProgressBar1.Max := ALTO*3;
+  ProgressBar1.Step:= round(ProgressBar1.Width / (ALTO));
   //Calcula la transformada de Fourier de la imagen.
   calcTFourier(FOURIERMAT);
 
   //Calcula la magnitud de los valores resultantes de la transformada para cada píxel.
   magnitudMax := 0;
-  for u:=0 to ANCHO-1 do
+  for u:=0 to ALTO-1 do
   begin
-    for v:=0 to ALTO-1 do
+    for v:=0 to ANCHO-1 do
     begin
       FOURIERMAGS[u,v] := sqrt(sqr(FOURIERMAT[u,v,0]) + sqr(FOURIERMAT[u,v,1]));
       //Busca la magnitud máxima en la imagen.
       If FOURIERMAGS[u,v] > magnitudMax then
         magnitudMax := FOURIERMAGS[u,v];
     end;
+    ProgressBar1.StepIt;
   end;
 
-  //Normaliza los valores de las magnitudes.
-  for u:=0 to ANCHO-1 do
-    for v:=0 to ALTO-1 do
+  //Calcula mitades de alto y ancho.
+  m := ALTO div 2;
+  n := ANCHO div 2;
+  //Traslación de i,j al plano de Fourier.
+  for i:=0 to m-1 do
+  begin
+    for j:=0 to n-1 do
     begin
-      FOURIERMAGS[u,v] := (FOURIERMAGS[u,v])/magnitudMax * 255;
-      FOURIERMAGS[u,v] := 255/log10(1 + magnitudMax)*log10(1 + abs(FOURIERMAGS[u,v]));
-    end;
+      tmp := FOURIERMAGS[i,j];
+      FOURIERMAGS[i,j] := FOURIERMAGS[i+m, j+n];
+      FOURIERMAGS[i+m, j+n] := tmp;
 
-  for i:=0 to ANCHO-1 do
-    for j:=0 to ALTO-1 do
+      tmp := FOURIERMAGS[i + m, j];
+      FOURIERMAGS[i+m, j] := FOURIERMAGS[i, j+n];
+      FOURIERMAGS[i, j+n] := tmp;
+    end;//j
+  end;//i
+
+  //Normaliza los valores de las magnitudes.
+  for u:=0 to ALTO-1 do
+  begin
+    for v:=0 to ANCHO-1 do
+    begin
+      FOURIERMAGS[u,v] := 255/ln(1 + magnitudMax)*ln(1 + abs(FOURIERMAGS[u,v]));
+    end;//v
+    ProgressBar1.StepIt;
+  end;//u
+
+  //Guarda magnitudes en la matriz del espectro.
+  for i:=0 to ALTO-1 do
+    for j:=0 to ANCHO-1 do
       for k:=0 to 2 do
         ESPECMAT[i,j,k] := round(FOURIERMAGS[i,j]);
 
@@ -342,12 +361,9 @@ procedure TForm1.MenuItem31Click(Sender: TObject);
 var
   FOURIERMAT : complexMAT;
   FOURIERINVMAT : complexMAT;
-  FOURIERMAGS : Array of Array of Real;
-  FILTEREDMAT : MATRGB;
   i,j, u,v : Integer;
-  magnitudMax, D, H:  Real;
+  D, H:  Real;
   k : Byte;
-  ut,vt : Integer;
   realVal, imVal:  Real;
   phiu, phiv : Real;
   cosw, senw : Real;
@@ -356,84 +372,68 @@ begin
   //Conversión a escala de grises.
   toGray();
   SetLength(FOURIERMAT,ALTO,ANCHO);//Valores de la transformada de Fourier.
-  SetLength(FOURIERINVMAT,ALTO,ANCHO); //Inverso
-  SetLength(FOURIERMAGS,ALTO,ANCHO);//Magnitudes de la transformada.
-  SetLength(FILTEREDMAT,ALTO,ANCHO,3); //Inverso.
+  SetLength(FOURIERINVMAT,ALTO,ANCHO);//Valores de la transformada inversa.
 
   ProgressBar1.Position := 0;
-  ProgressBar1.Step:= round(ProgressBar1.Width / (ANCHO));
+  ProgressBar1.Max := ALTO*3;
+  ProgressBar1.Step:= round(ProgressBar1.Width / (ALTO));
   //Calcula la transformada de Fourier de la imagen.
   calcTFourier(FOURIERMAT);
 
   //Calcula factor escalar común.
   s := 1/sqrt(ANCHO * ALTO);
-  //Recorre toda la imagen y calcula la transformada Inversa de Fourier de la imagen.
+  //Recorre toda la imagen, aplica filtro Gaussiano y calcula la transformada Inversa de Fourier de la imagen.
   for i:=0 to ALTO-1 do
+  begin
     for j:=0 to ANCHO-1 do
     begin
       //Inicializa las sumas de ambas partes en 0.
       realVal := 0;
       imVal := 0;
-      //Traslación de u,v al plano de Fourier.
-      //ut := floor(ALTO/2) + i;
-      //vt := j + floor(ANCHO/2);
       //Calcula factores comunes.
       phiu := 2 * Pi * i/ALTO ;
       phiv := 2 * Pi * j/ANCHO;
-      //Aquí se calcula la transformada.
+      //Aquí se aplica el filtro y se calcula la transformada inversa.
       for u:=0 to ALTO-1 do
         for v:=0 to ANCHO-1 do
         begin
+          //Calcula distancia del píxel al centro
+          D := sqrt(sqr(u - ALTO/2) + sqr(v - ANCHO/2));
+          //Calcula valor del filtro Gaussiano.
+          H := -exp(-sqr(D)/(2*sqr(300)));
           //Calcula valores de seno y coseno.
           cosw := cos(phiu*u + phiv*v);
           senw := -sin(phiu*u + phiv*v);
           //Calcula partes real e imaginaria de la transformada y los agrega a la suma correspondiente.
-          realVal := realVal + FOURIERMAT[u,v,0] * cosw + FOURIERMAT[u,v,1] * senw;
-          imVal := imVal + FOURIERMAT[u,v,1] * cosw - FOURIERMAT[u,v,0] * senw;
+          realVal := realVal + FOURIERMAT[u,v,0]*H * cosw + FOURIERMAT[u,v,1]*H * senw;
+          imVal := imVal + FOURIERMAT[u,v,1]*H * cosw - FOURIERMAT[u,v,0]*H * senw;
         end;//v
       //Guarda valores multiplicados por el factor escalar común.
       FOURIERINVMAT[i,j,0] := realVal * s;
       FOURIERINVMAT[i,j,1] := imVal * s;
     end;//j
+    ProgressBar1.StepIt;
+  end;//i
 
-  //Calcula la magnitud de los valores resultantes de la transformada para cada píxel.
-  magnitudMax := 0;
-  for u:=0 to ALTO-1 do
-  begin
-    for v:=0 to ANCHO-1 do
-    begin
-      //FOURIERMAGS[u,v] := sqrt(sqr(FOURIERINVMAT[u,v,0]) + sqr(FOURIERINVMAT[u,v,1]));
-      FOURIERMAGS[u,v] := FOURIERINVMAT[u,v,0];
-      //Busca la magnitud máxima en la imagen.
-      If FOURIERMAGS[u,v] > magnitudMax then
-        magnitudMax := FOURIERMAGS[u,v];
-    end;
-  end;
-
+  //Se copia el resultado del filtro en la matriz auxiliar.
   for i:=0 to ALTO-1 do
+  begin
     for j:=0 to ANCHO-1 do
       for k:=0 to 2 do
-        FILTEREDMAT[i,j,k] := round(FOURIERMAGS[i,j]);
+        MAT2AUX[i,j,k] := round(FOURIERINVMAT[i,j,0]);
+    ProgressBar1.StepIt;
+  end;
 
-  //D := sqrt(sqr(ut - ANCHO/2) + sqr(vt - ALTO/2));
-  //H := -exp(-sqr(D)/(2*sqr(60)));
-  //FOURIERMAT[u,v,0]*H + FOURIERMAT[u,v,1]*H;
-
-  //Se copia el resultado en la matriz de la imagen.
-  copMtoM(ALTO, ANCHO, FILTEREDMAT, MAT2AUX);
+  //Se copia el resultado del filtro de Fourier en la imagen.
+  copMtoM(ALTO, ANCHO, MAT2AUX, MAT);
   //Se copia el resultado de la matriz al bitmap.
+  copMB(ALTO,ANCHO,MAT,BMAP);
   copMB(ALTO,ANCHO,MAT2AUX,BMAPAUX);
-  //Se muestra el resultado del espectro en TImage2.
+  //Se muestra el resultado del filtro en la imagen y en TImage2.
+  Image1.Picture.Assign(BMAP);
   Image2.Picture.Assign(BMAPAUX);
-
-  //Se copia el resultado en la matriz de la imagen.
-  //copMtoM(ALTO, ANCHO, FOURIERMAT, MAT);
-  //Se copia el resultado de la matriz al bitmap.
-  //copMB(ALTO,ANCHO,MAT,BMAP);
-  //Visualizar el resultado en pantalla.
-  //Image1.Picture.Assign(BMAP);
   //Se actualiza el histograma de la imagen.
-  //grafHist();
+  grafHist();
 end;
 
 //Aplica filtro morfológico de dilatación para imágenes con fondo negro.
@@ -456,7 +456,6 @@ begin
   //Se copia matriz original a la del resultado del filtro.
   SetLength(MORFOMAT,ALTO,ANCHO,3);
   copMtoM(ALTO, ANCHO, MAT, MORFOMAT);
-
 
   //Se recorre toda la imagen.
   for i := 1 to ALTO-2 do
@@ -547,8 +546,6 @@ begin
     //Habilita las opciones del menú.
     MenuItem3.Enabled := True; //Habilita menú de Filtros.
     MenuItem6.Enabled := True; //Habilita menú de Conversión de modelo.
-    //MenuItem9.Enabled := False; //Deshabilita conversión a RGB.
-    //MenuItem2.Enabled := True; //Habilita conversión a HSV.
     MenuItem14.Enabled := True; //Habilita opción Restaurar.
     MenuItem15.Enabled := True; //Habilita opción Guardar como.
     MenuItem17.Enabled := True; //Habilita opción de Selección.
@@ -706,9 +703,6 @@ begin
   Image1.Picture.Assign(BMAP);
   //Se actualiza el histograma de la imagen.
   grafHist();
-  //Deshabilita conversión a RGB. Habilita conversión a HSV.
-  //MenuItem2.Enabled := True;
-  //MenuItem9.Enabled := False;
 end;
 
 procedure TForm1.RChannelCustomDrawPointer(ASender: TChartSeries;
@@ -1127,7 +1121,7 @@ end;
 procedure TForm1.generarPaletaColores();
 var
   i,j:  Integer;
-  k : Byte;
+  k: Byte;
   colors: Array[0..3] of Array[0..2] of Byte;
   c: Tcolor;
   d1,d2,d3 : Float;
@@ -1145,45 +1139,38 @@ begin
       colors[k,2] := GetBValue(c);
     end;
   end;
-  //Método 2.
-  {d1 := sqrt(power(colors[1,0]-colors[0,0],2)+power(colors[1,1]-colors[0,1],2)+power(colors[1,2]-colors[0,2],2));
+  //Cálcula distancias entre colores.
+  d1 := sqrt(power(colors[1,0]-colors[0,0],2)+power(colors[1,1]-colors[0,1],2)+power(colors[1,2]-colors[0,2],2));
   d2 := sqrt(power(colors[2,0]-colors[1,0],2)+power(colors[2,1]-colors[1,1],2)+power(colors[2,2]-colors[1,2],2));
   d3 := sqrt(power(colors[3,0]-colors[2,0],2)+power(colors[3,1]-colors[2,1],2)+power(colors[3,2]-colors[2,2],2));
+  //Obtiene la distancia total.
   l := round(d1+d2+d3);
-  n1 := round(255 * d1 / l);
-  n2 := round(255 * d2 / l);
-  n3 := 255-n1-n2;
-  j:=0;
+  //Calcula los colores que habrán en cada segmento.
+  n1 := round(255 * max(d1,max(d2,d3)) / l);
+  n2 := round((255-n1) * min(d1,min(d2,d3)) / l);
+  n3 := 255-n2-n1;
+  j:=0; //Llevará el control de la paleta.
+  //Calcula los colores correspondientes al primer segmento mediante interpolación lineal.
   for i:=0 to n1-1 do
   begin
     for k:=0 to 2 do
       paleta[j,k] := Round(colors[0,k] + (j/255)*(colors[1,k] - colors[0,k]));
     j:=j+1;
   end;
+  //Calcula los colores correspondientes al segundo segmento mediante interpolación lineal.
   for i:=0 to n2-1 do
   begin
     for k:=0 to 2 do
       paleta[j,k] := Round(colors[1,k] + (j/255)*(colors[2,k] - colors[1,k]));
     j:=j+1;
   end;
+  //Calcula los colores correspondientes al tercer segmento mediante interpolación lineal.
   for i:=0 to n3-1 do
   begin
     for k:=0 to 2 do
       paleta[j,k] := Round(colors[2,k] + (j/255)*(colors[3,k] - colors[2,k]));
     j:=j+1;
-  end;}
-  //Calcula la paleta de colores mediante interpolación lineal.
-  for j:=0 to 2 do
-  begin
-    //De un color a otro se generan 85 colores.
-    for i:=85*j to 85*(j+1)-1 do
-      for k:=0 to 2 do
-        paleta[i,k] := Round(colors[j,k] + (i/255)*(colors[j+1,k] - colors[j,k]));
   end;
-  //Asigna el último color al último valor de la paleta.
-  paleta[255,0] := colors[3,0];
-  paleta[255,1] := colors[3,1];
-  paleta[255,2] := colors[3,2];
 end;
 
 //Aplica LBP por máximo.
@@ -1250,11 +1237,12 @@ begin
   //Se actualiza el histograma de la imagen.
   grafHist();
 
-  //Se manda el resultado del LBP con color a una nueva ventana.
-  copMB(ALTO,ANCHO,LBPMATCOLOR,BMAP);
-  Form5.Image1.Picture.Assign(BMAP);
-  copMB(ALTO,ANCHO,MAT,BMAP);
-  Form5.ShowModal;
+  //Se copia el resultado del LBP con color en la matriz de la imagen auxiliar.
+  copMtoM(ALTO, ANCHO, LBPMATCOLOR, MAT2AUX);
+  //Se copia el resultado de la matriz al bitmap.
+  copMB(ALTO,ANCHO,MAT2AUX,BMAPAUX);
+  //Visualizar el resultado en pantalla.
+  Image2.Picture.Assign(BMAPAUX);
 end;
 
 //Manda a llamar al método de rotación a la derecha (90°).
@@ -1367,11 +1355,12 @@ begin
   //Se actualiza el histograma de la imagen.
   grafHist();
 
-  //Se manda el resultado del LBP con color a una nueva ventana.
-  copMB(ALTO,ANCHO,LBPMATCOLOR,BMAP);
-  Form5.Image1.Picture.Assign(BMAP);
-  copMB(ALTO,ANCHO,MAT,BMAP);
-  Form5.ShowModal;
+  //Se copia el resultado del LBP con color en la matriz de la imagen auxiliar.
+  copMtoM(ALTO, ANCHO, LBPMATCOLOR, MAT2AUX);
+  //Se copia el resultado de la matriz al bitmap.
+  copMB(ALTO,ANCHO,MAT2AUX,BMAPAUX);
+  //Visualizar el resultado en pantalla.
+  Image2.Picture.Assign(BMAPAUX);
 end;
 
 //Aplica filtro circular de patrón.

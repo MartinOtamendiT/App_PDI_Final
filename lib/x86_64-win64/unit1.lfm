@@ -1,14 +1,14 @@
 object Form1: TForm1
-  Left = 59
-  Height = 606
-  Top = 127
+  Left = 53
+  Height = 566
+  Top = 81
   Width = 1263
   HorzScrollBar.Page = 920
   HorzScrollBar.Range = 920
   VertScrollBar.Page = 545
   VertScrollBar.Range = 545
   Caption = 'Form1'
-  ClientHeight = 586
+  ClientHeight = 546
   ClientWidth = 1263
   Menu = MainMenu1
   OnCreate = FormCreate
@@ -40,7 +40,7 @@ object Form1: TForm1
   object StatusBar1: TStatusBar
     Left = 0
     Height = 23
-    Top = 563
+    Top = 523
     Width = 1263
     Panels = <    
       item
@@ -88,7 +88,7 @@ object Form1: TForm1
   object Chart1: TChart
     Left = 504
     Height = 264
-    Top = 72
+    Top = 80
     Width = 264
     AllowZoom = False
     AxisList = <    
@@ -171,7 +171,7 @@ object Form1: TForm1
   object Label1: TLabel
     Left = 504
     Height = 15
-    Top = 336
+    Top = 352
     Width = 39
     Caption = 'Valor X:'
     ParentColor = False
@@ -179,17 +179,17 @@ object Form1: TForm1
   object Label2: TLabel
     Left = 592
     Height = 15
-    Top = 336
+    Top = 352
     Width = 109
     Caption = 'Rango seleccionado:'
     ParentColor = False
     OnClick = Label2Click
   end
   object ProgressBar1: TProgressBar
-    Left = 536
+    Left = 520
     Height = 20
-    Top = 440
-    Width = 200
+    Top = 480
+    Width = 224
     TabOrder = 3
   end
   object ScrollBox2: TScrollBox
@@ -215,6 +215,22 @@ object Form1: TForm1
       OnMouseMove = Image1MouseMove
       OnMouseUp = Image1MouseUp
     end
+  end
+  object Label3: TLabel
+    Left = 176
+    Height = 15
+    Top = 495
+    Width = 125
+    Caption = 'Imagen original y filtros'
+    ParentColor = False
+  end
+  object Label4: TLabel
+    Left = 904
+    Height = 15
+    Top = 495
+    Width = 242
+    Caption = 'Resultados de dilatación, Fourier y LBP a color'
+    ParentColor = False
   end
   object MainMenu1: TMainMenu
     Left = 600
