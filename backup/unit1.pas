@@ -240,7 +240,7 @@ end;
 //Función que calcula la transformada de Fourier de la imagen.
 procedure TForm1.calcTFourier(var FOURIERMAT: complexMAT);
 var
-  i,j, u,v: Integer;
+  i,j, u,v, uTranslated, vTranslated: Integer;
   realVal, imVal:  Real;
   phiu, phiv : Real;
   cosw, senw : Real;
@@ -256,9 +256,12 @@ begin
       //Inicializa las sumas de ambas partes en 0.
       realVal := 0;
       imVal := 0;
+      //Realiza translación de u y v al plano de Fourier.
+      uTranslated := u - floor(ALTO/2) ;
+      vTranslated := v - floor(ANCHO/2);
       //Calcula factores comunes.
-      phiu := 2 * Pi * u/ALTO ;
-      phiv := 2 * Pi * v/ANCHO;
+      phiu := 2 * Pi * uTranslated/ALTO ;
+      phiv := 2 * Pi * vTranslated/ANCHO;
       //Aquí se calcula la transformada.
       for i:=0 to ALTO-1 do
         for j:=0 to ANCHO-1 do
@@ -284,8 +287,8 @@ var
   FOURIERMAT : complexMAT;
   FOURIERMAGS : Array of Array of Real;
   ESPECMAT : MATRGB;
-  i,j, u,v, m, n : Integer;
-  magnitudMax, tmp:  Real;
+  i,j, u,v : Integer;
+  magnitudMax :  Real;
   k : Byte;
 begin
   //Conversión a escala de grises.
@@ -314,32 +317,12 @@ begin
     ProgressBar1.StepIt;
   end;
 
-  //Calcula mitades de alto y ancho.
-  m := ALTO div 2;
-  n := ANCHO div 2;
-  //Traslación de i,j al plano de Fourier.
-  for i:=0 to m-1 do
-  begin
-    for j:=0 to n-1 do
-    begin
-      tmp := FOURIERMAGS[i,j];
-      FOURIERMAGS[i,j] := FOURIERMAGS[i+m, j+n];
-      FOURIERMAGS[i+m, j+n] := tmp;
-
-      tmp := FOURIERMAGS[i + m, j];
-      FOURIERMAGS[i+m, j] := FOURIERMAGS[i, j+n];
-      FOURIERMAGS[i, j+n] := tmp;
-    end;//j
-  end;//i
-
   //Normaliza los valores de las magnitudes.
   for u:=0 to ALTO-1 do
   begin
     for v:=0 to ANCHO-1 do
     begin
-      //FOURIERMAGS[u,v] := (FOURIERMAGS[u,v])/magnitudMax * 255;
-      //FOURIERMAGS[u,v] := 255/log10(1 + magnitudMax)*log10(1 + abs(FOURIERMAGS[u,v]));
-      FOURIERMAGS[u,v] := (ln(FOURIERMAGS[u,v] + 1) - ln(ln(FOURIERMAGS[u,v] + 1) + 1)) / (ln(magnitudMax + 1) - ln(1)) * 255;
+      FOURIERMAGS[u,v] := 255/ln(1 + magnitudMax)*ln(1 + abs(FOURIERMAGS[u,v]));
     end;//v
     ProgressBar1.StepIt;
   end;//u
@@ -363,21 +346,23 @@ procedure TForm1.MenuItem31Click(Sender: TObject);
 var
   FOURIERMAT : complexMAT;
   FOURIERINVMAT : complexMAT;
-  i,j, u,v : Integer;
+  i,j, u,v: Integer;
   D, H:  Real;
   k : Byte;
   realVal, imVal:  Real;
   phiu, phiv : Real;
   cosw, senw : Real;
-  s : Real;
+  s: Real;
+  magnitudMax, magnitudMin:  Real;
 begin
   //Conversión a escala de grises.
   toGray();
   SetLength(FOURIERMAT,ALTO,ANCHO);//Valores de la transformada de Fourier.
   SetLength(FOURIERINVMAT,ALTO,ANCHO);//Valores de la transformada inversa.
 
+  //Configura barra de progreso.
   ProgressBar1.Position := 0;
-  ProgressBar1.Max := ALTO*3;
+  ProgressBar1.Max := ALTO*4;
   ProgressBar1.Step:= round(ProgressBar1.Width / (ALTO));
   //Calcula la transformada de Fourier de la imagen.
   calcTFourier(FOURIERMAT);
@@ -399,16 +384,17 @@ begin
       for u:=0 to ALTO-1 do
         for v:=0 to ANCHO-1 do
         begin
-          //Calcula distancia del píxel al centro
+          //Calcula distancia del píxel al centro.
           D := sqrt(sqr(u - ALTO/2) + sqr(v - ANCHO/2));
           //Calcula valor del filtro Gaussiano.
-          H := -exp(-sqr(D)/(2*sqr(300)));
+          H := 1-exp(-sqr(D)/(2*sqr(60)));
+
           //Calcula valores de seno y coseno.
           cosw := cos(phiu*u + phiv*v);
           senw := -sin(phiu*u + phiv*v);
           //Calcula partes real e imaginaria de la transformada y los agrega a la suma correspondiente.
-          realVal := realVal + FOURIERMAT[u,v,0]*H * cosw + FOURIERMAT[u,v,1]*H * senw;
-          imVal := imVal + FOURIERMAT[u,v,1]*H * cosw - FOURIERMAT[u,v,0]*H * senw;
+          realVal := realVal + (H * (FOURIERMAT[u,v,0] * cosw + FOURIERMAT[u,v,0] * senw));
+          imVal := imVal + (H * (FOURIERMAT[u,v,1] * cosw - FOURIERMAT[u,v,1] * senw));
         end;//v
       //Guarda valores multiplicados por el factor escalar común.
       FOURIERINVMAT[i,j,0] := realVal * s;
@@ -417,12 +403,31 @@ begin
     ProgressBar1.StepIt;
   end;//i
 
-  //Se copia el resultado del filtro en la matriz auxiliar.
+  //Se copia el resultado del filtro en la matriz auxiliar y calcula valores máximo y mínimo.
+  magnitudMax := 0;
+  magnitudMin := MAT2AUX[0,0,0];
+  for i:=0 to ALTO-1 do
+  begin
+    for j:=0 to ANCHO-1 do
+    begin
+      for k:=0 to 2 do
+        MAT2AUX[i,j,k] := round(abs(FOURIERINVMAT[ALTO-i-1,ANCHO-j-1,0]+FOURIERINVMAT[ALTO-i-1,ANCHO-j-1,1]));
+      //Busca la magnitud máxima en la imagen.
+      If MAT2AUX[i,j,0] > magnitudMax then
+        magnitudMax := MAT2AUX[i,j,0];
+      //Busca la magnitud mínima en la imagen.
+      If MAT2AUX[i,j,0] < magnitudMin then
+        magnitudMin := MAT2AUX[i,j,0];
+    end;
+    ProgressBar1.StepIt;
+  end;
+
+  //Aplica normalización min-max.
   for i:=0 to ALTO-1 do
   begin
     for j:=0 to ANCHO-1 do
       for k:=0 to 2 do
-        MAT2AUX[i,j,k] := round(FOURIERINVMAT[i,j,0]);
+        MAT2AUX[i,j,k] := round((MAT2AUX[i,j,k] - magnitudMin)/(magnitudMax - magnitudMin) * 255);
     ProgressBar1.StepIt;
   end;
 
@@ -551,6 +556,8 @@ begin
     MenuItem14.Enabled := True; //Habilita opción Restaurar.
     MenuItem15.Enabled := True; //Habilita opción Guardar como.
     MenuItem17.Enabled := True; //Habilita opción de Selección.
+    MenuItem10.Enabled := True; //Habilita opción de Operaciones.
+    MenuItem22.Enabled := True; //Habilita opción de Imagen.
   end;
 end;
 

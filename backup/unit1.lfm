@@ -1,7 +1,7 @@
 object Form1: TForm1
-  Left = 53
+  Left = 57
   Height = 566
-  Top = 81
+  Top = 126
   Width = 1263
   HorzScrollBar.Page = 920
   HorzScrollBar.Range = 920
@@ -266,6 +266,7 @@ object Form1: TForm1
     end
     object MenuItem3: TMenuItem
       Caption = 'Filtros'
+      Enabled = False
       OnClick = MenuItem3Click
       object MenuItem5: TMenuItem
         Caption = 'Negativo'
@@ -303,6 +304,7 @@ object Form1: TForm1
     end
     object MenuItem10: TMenuItem
       Caption = 'Operaciones'
+      Enabled = False
       object MenuItem11: TMenuItem
         Caption = 'Binarización'
         OnClick = MenuItem11Click
